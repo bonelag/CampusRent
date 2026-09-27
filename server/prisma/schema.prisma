@@ -1,0 +1,127 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  LANDLORD
+  ADMIN
+}
+
+enum RoomStatus {
+  AVAILABLE
+  RENTED
+  HIDDEN
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  fullName      String
+  phoneNumber   String?
+  avatar        String?
+  role          Role      @default(STUDENT)
+  isEduVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  rooms         Room[]    @relation("LandlordRooms")
+  reviews       Review[]
+  reports       Report[]
+}
+
+model University {
+  id          String   @id @default(uuid())
+  name        String
+  shortName   String
+  latitude    Float
+  longitude   Float
+  address     String
+  createdAt   DateTime @default(now())
+
+  rooms       Room[]
+}
+
+model Room {
+  id            String      @id @default(uuid())
+  landlordId    String
+  landlord      User        @relation("LandlordRooms", fields: [landlordId], references: [id], onDelete: Cascade)
+  universityId  String?
+  university    University? @relation(fields: [universityId], references: [id])
+  
+  title         String
+  description   String      @db.Text
+  address       String
+  latitude      Float
+  longitude     Float
+  
+  basePrice     Float
+  electricPrice Float
+  waterPrice    Float
+  internetPrice Float       @default(0)
+  otherFee      Float       @default(0)
+
+  area          Float
+  maxPeople     Int         @default(2)
+  amenities     String[]
+  status        RoomStatus  @default(AVAILABLE)
+  
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  images        RoomImage[]
+  reviews       Review[]
+  reports       Report[]
+}
+
+model RoomImage {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  url       String
+  publicId  String?
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rating    Int
+  comment   String   @db.Text
+  isFlagged Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  reports   Report[]
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  reporterId  String
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  roomId      String?
+  room        Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  reviewId    String?
+  review      Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  
+  reason      String
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+}
