@@ -113,10 +113,3 @@ npm run seed
 Mở trình duyệt tại: `http://localhost:5173`
 
 ---
-
-## 📖 Tài liệu kỹ thuật chi tiết
-
-Vui lòng tham khảo file `CLAUDE.md` để xem toàn bộ thông số chi tiết:
-* Định nghĩa Prisma Schema và quan hệ CSDL.
-* Đặc tả các API Endpoints (`/api/auth`, `/api/rooms`, `/api/universities`, `/api/reviews`, `/api/admin`).
-* Công thức tính khoảng cách Haversine và thuật toán dự toán sinh hoạt phí.
