@@ -14,7 +14,7 @@ enum Role {
   ADMIN
 }
 
-enum RoomStatus {
+enum PostStatus {
   AVAILABLE
   RENTED
   HIDDEN
@@ -38,29 +38,15 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  rooms         Room[]    @relation("LandlordRooms")
+  posts         Post[]
   reviews       Review[]
   reports       Report[]
 }
 
-model University {
-  id          String   @id @default(uuid())
-  name        String
-  shortName   String
-  latitude    Float
-  longitude   Float
-  address     String
-  createdAt   DateTime @default(now())
-
-  rooms       Room[]
-}
-
-model Room {
+model Post {
   id            String      @id @default(uuid())
-  landlordId    String
-  landlord      User        @relation("LandlordRooms", fields: [landlordId], references: [id], onDelete: Cascade)
-  universityId  String?
-  university    University? @relation(fields: [universityId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   title         String
   description   String      @db.Text
@@ -77,30 +63,21 @@ model Room {
   area          Float
   maxPeople     Int         @default(2)
   amenities     String[]
-  status        RoomStatus  @default(AVAILABLE)
+  images        String[]
+  status        PostStatus  @default(AVAILABLE)
   
   expiresAt     DateTime
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  images        RoomImage[]
   reviews       Review[]
   reports       Report[]
 }
 
-model RoomImage {
-  id        String   @id @default(uuid())
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  url       String
-  publicId  String?
-  createdAt DateTime @default(now())
-}
-
 model Review {
   id        String   @id @default(uuid())
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -116,8 +93,8 @@ model Report {
   id          String       @id @default(uuid())
   reporterId  String
   reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  roomId      String?
-  room        Room?        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
   reviewId    String?
   review      Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   

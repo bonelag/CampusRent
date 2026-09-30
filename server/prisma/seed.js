@@ -7,9 +7,7 @@ async function main() {
   console.log('[SEED] Bắt đầu dọn dẹp dữ liệu cũ (nếu có)...');
   await prisma.report.deleteMany();
   await prisma.review.deleteMany();
-  await prisma.roomImage.deleteMany();
-  await prisma.room.deleteMany();
-  await prisma.university.deleteMany();
+  await prisma.post.deleteMany();
   await prisma.user.deleteMany();
 
   console.log('[SEED] Tạo tài khoản mẫu...');
@@ -71,50 +69,34 @@ async function main() {
     },
   });
 
-  console.log('[SEED] Tạo 5 trường Đại học trọng điểm...');
-  const universitiesData = [
+  console.log('[SEED] Chuẩn bị tọa độ các cụm khu vực trọng điểm...');
+  const targetHubs = [
     {
-      name: 'Đại học Bách khoa Hà Nội',
-      shortName: 'BKHN',
+      name: 'Khu vực Bách Khoa (Hai Bà Trưng, HN)',
       latitude: 21.0044,
       longitude: 105.8433,
-      address: 'Số 1 Đại Cồ Việt, Bách Khoa, Hai Bà Trưng, Hà Nội',
     },
     {
-      name: 'Đại học Kinh tế Quốc dân',
-      shortName: 'NEU',
+      name: 'Khu vực Kinh tế Quốc dân (Hai Bà Trưng, HN)',
       latitude: 21.0003,
       longitude: 105.8427,
-      address: '207 Giải Phóng, Đồng Tâm, Hai Bà Trưng, Hà Nội',
     },
     {
-      name: 'Đại học Công nghệ - ĐHQGHN',
-      shortName: 'UET',
+      name: 'Khu vực Cầu Giấy - ĐHQGHN',
       latitude: 21.0378,
       longitude: 105.7828,
-      address: '144 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội',
     },
     {
-      name: 'Đại học Bách khoa ĐHQG-HCM',
-      shortName: 'HCMUT',
+      name: 'Khu vực Quận 10 (TP.HCM)',
       latitude: 10.7725,
       longitude: 106.6578,
-      address: '268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM',
     },
     {
-      name: 'Đại học Công nghệ Thông tin - ĐHQG-HCM',
-      shortName: 'UIT',
+      name: 'Khu vực Làng Đại học Thủ Đức (TP.HCM)',
       latitude: 10.8700,
       longitude: 106.8031,
-      address: 'Khu phố 6, P. Linh Trung, TP. Thủ Đức, TP.HCM',
     },
   ];
-
-  const universities = [];
-  for (const uni of universitiesData) {
-    const createdUni = await prisma.university.create({ data: uni });
-    universities.push(createdUni);
-  }
 
   const sampleImages = [
     'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=800&q=80',
@@ -467,24 +449,23 @@ async function main() {
     },
   ];
 
-  const createdRooms = [];
+  const createdPosts = [];
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 ngày sau
 
   for (let i = 0; i < roomsSpec.length; i++) {
     const spec = roomsSpec[i];
-    const uni = universities[spec.uniIdx];
+    const hub = targetHubs[spec.uniIdx];
     const landlord = i % 2 === 0 ? landlord1 : landlord2;
 
-    const room = await prisma.room.create({
+    const post = await prisma.post.create({
       data: {
-        landlordId: landlord.id,
-        universityId: uni.id,
+        userId: landlord.id,
         title: spec.title,
         description: spec.description,
         address: spec.address,
-        latitude: parseFloat((uni.latitude + spec.latOffset).toFixed(6)),
-        longitude: parseFloat((uni.longitude + spec.lngOffset).toFixed(6)),
+        latitude: parseFloat((hub.latitude + spec.latOffset).toFixed(6)),
+        longitude: parseFloat((hub.longitude + spec.lngOffset).toFixed(6)),
         basePrice: spec.basePrice,
         electricPrice: 3800,
         waterPrice: 30000,
@@ -493,23 +474,21 @@ async function main() {
         area: spec.area,
         maxPeople: spec.area > 25 ? 3 : 2,
         amenities: spec.amenities,
+        images: [
+          sampleImages[i % sampleImages.length],
+          sampleImages[(i + 1) % sampleImages.length],
+        ],
         status: 'AVAILABLE',
         expiresAt: expiresAt,
-        images: {
-          create: [
-            { url: sampleImages[i % sampleImages.length] },
-            { url: sampleImages[(i + 1) % sampleImages.length] },
-          ],
-        },
       },
     });
-    createdRooms.push(room);
+    createdPosts.push(post);
   }
 
   console.log('[SEED] Thêm đánh giá (Reviews) mẫu...');
   await prisma.review.create({
     data: {
-      roomId: createdRooms[0].id,
+      postId: createdPosts[0].id,
       userId: studentEdu.id,
       rating: 5,
       comment: 'Phòng cực kỳ thoáng và sạch sẽ, chủ nhà thân thiện. Rất gần trường đi bộ thoải mái!',
@@ -519,7 +498,7 @@ async function main() {
 
   await prisma.review.create({
     data: {
-      roomId: createdRooms[0].id,
+      postId: createdPosts[0].id,
       userId: studentNormal.id,
       rating: 4,
       comment: 'Giá cả hợp lý cho sinh viên, mạng ổn định để học trực tuyến.',
@@ -529,7 +508,7 @@ async function main() {
 
   await prisma.review.create({
     data: {
-      roomId: createdRooms[6].id,
+      postId: createdPosts[6].id,
       userId: studentEdu.id,
       rating: 5,
       comment: 'Gần NEU ăn uống quá tiện, an ninh tốt, xe cộ để an tâm.',
