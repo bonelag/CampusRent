@@ -1,0 +1,47 @@
+@{
+    ViewData["Title"] = "Đăng tin phòng trọ mới";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm p-4">
+            <h3 class="fw-bold mb-3 text-primary">Đăng tin phòng trọ</h3>
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tiêu đề bài đăng</label>
+                    <input type="text" name="Title" class="form-control" placeholder="Ví dụ: Phòng khép kín ban công thoáng gần Bách Khoa" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Địa chỉ chi tiết</label>
+                    <input type="text" name="Address" class="form-control" placeholder="Số nhà, tên ngõ, tên đường, quận..." required />
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Giá thuê / tháng (VNĐ)</label>
+                        <input type="number" name="BasePrice" class="form-control" placeholder="3000000" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Diện tích (m²)</label>
+                        <input type="number" name="Area" class="form-control" placeholder="25" required />
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tiền điện (đ/kWh)</label>
+                        <input type="number" name="ElectricPrice" class="form-control" placeholder="3800" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tiền nước (đ/m³)</label>
+                        <input type="number" name="WaterPrice" class="form-control" placeholder="30000" required />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Mô tả phòng</label>
+                    <textarea name="Description" class="form-control" rows="4" placeholder="Tiện nghi, giờ giấc, an ninh..."></textarea>
+                </div>
+                <!-- TODO: Thành viên nhóm xử lý lưu bài đăng vào CSDL -->
+                <button type="submit" class="btn btn-primary w-100 btn-lg">Đăng tin ngay</button>
+            </form>
+        </div>
+    </div>
+</div>

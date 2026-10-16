@@ -1,0 +1,43 @@
+@{
+    ViewData["Title"] = "Đăng ký tài khoản";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm p-4 mt-4">
+            <h3 class="fw-bold text-center text-primary mb-3">Tạo tài khoản mới</h3>
+            <div class="alert alert-info py-2 small">
+                💡 <strong>Mẹo:</strong> Đăng ký bằng email trường (đuôi <code>.edu.vn</code>) để nhận ngay huy hiệu <strong>Sinh viên đã xác thực</strong>.
+            </div>
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Họ và tên</label>
+                    <input type="text" name="FullName" class="form-control" placeholder="Nguyễn Văn A" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="Email" class="form-control" placeholder="sinhvien@sis.hust.edu.vn" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Số điện thoại</label>
+                    <input type="tel" name="PhoneNumber" class="form-control" placeholder="0901234567" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu</label>
+                    <input type="password" name="Password" class="form-control" placeholder="••••••••" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Vai trò</label>
+                    <select name="Role" class="form-select">
+                        <option value="STUDENT" selected>Sinh viên tìm trọ</option>
+                        <option value="LANDLORD">Chủ trọ / Cho thuê</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Đăng ký tài khoản</button>
+            </form>
+            <div class="text-center mt-3">
+                <small class="text-muted">Đã có tài khoản? <a asp-action="Login">Đăng nhập</a></small>
+            </div>
+        </div>
+    </div>
+</div>

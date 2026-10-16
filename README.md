@@ -16,9 +16,10 @@ Nền tảng web tìm kiếm và đánh giá phòng trọ sinh viên lấy các 
 
 ## 🛠 Công nghệ sử dụng (Tech Stack)
 
-* **Frontend:** React 18, Vite, Tailwind CSS, Leaflet / React-Leaflet, Axios, React Router v6, Lucide Icons.
-* **Backend:** ASP.NET Core 8 (.NET 8 Web API), Entity Framework Core (EF Core 8), Npgsql (PostgreSQL), JWT Bearer Authentication, BCrypt.Net, BackgroundService, CloudinaryDotNet.
-* **Database:** PostgreSQL (Supabase).
+* **Kiến trúc:** ASP.NET Core MVC (.NET 8)
+* **Giao diện (Views):** Razor Views (`.cshtml`), Bootstrap 5, jQuery, jQuery Validation
+* **Cơ sở dữ liệu (Database & ORM):** PostgreSQL (Supabase / Local), Entity Framework Core (EF Core 8), Npgsql
+* **Tiện ích & Bảo mật:** BCrypt.Net, CloudinaryDotNet
 
 ---
 
@@ -26,26 +27,25 @@ Nền tảng web tìm kiếm và đánh giá phòng trọ sinh viên lấy các 
 
 ```text
 CampusRent/
-├── client/                     # Frontend React (Vite)
-│   ├── public/                 # Tài nguyên tĩnh
-│   ├── src/
-│   │   ├── api/                # Cấu hình Axios & API client
-│   │   ├── components/         # UI components (Map, Room, Review)
-│   │   ├── context/            # Auth Context
-│   │   ├── hooks/              # Custom React Hooks
-│   │   ├── pages/              # Các màn hình chính
-│   │   └── routes/             # Điều hướng & bảo vệ route
-│   └── .env.example
-├── server/                     # Backend ASP.NET Core 8 Web API
-│   ├── BackgroundServices/     # AutoExpireRoomsWorker (Quét tự ẩn phòng hết hạn 30 ngày)
-│   ├── Controllers/            # Auth, Rooms, Universities, Reviews, Reports, Admin
-│   ├── Data/                   # CampusRentDbContext, DbSeeder (Dữ liệu mẫu ĐH & trọ)
-│   ├── DTOs/                   # Data Transfer Objects (Auth, Rooms, Reviews, Reports)
-│   ├── Models/                 # Entities (User, Room, University, Review, Report) & Enums
-│   ├── Services/               # HaversineService, LivingCostService, ProfanityFilter, TokenService, Cloudinary
-│   ├── appsettings.json        # Chuỗi kết nối PostgreSQL, JWT secret, Cloudinary config
-│   ├── Program.cs              # DI, Middleware, Authentication, CORS, Swagger setup
+├── server/                     # Ứng dụng ASP.NET Core MVC (.NET 8)
+│   ├── Controllers/            # HomeController, RoomsController, AccountController, AdminController
+│   ├── Models/                 # Entities & ViewModels (User, Room, University, Review, Report, ErrorViewModel)
+│   ├── Views/                  # Razor Views (.cshtml)
+│   │   ├── Account/            # Login, Register
+│   │   ├── Admin/              # Index (Quản trị duyệt báo cáo & thống kê)
+│   │   ├── Home/               # Index (Trang chủ tìm kiếm trọ), Privacy
+│   │   ├── Rooms/              # Index (Danh sách), Details (Chi tiết & Bảng tính sinh hoạt phí), Create
+│   │   └── Shared/             # _Layout.cshtml (Bootstrap 5 + jQuery), _ViewStart, _ViewImports, Error
+│   ├── wwwroot/                # Tài nguyên tĩnh
+│   │   ├── lib/                # Bootstrap 5, jQuery, jQuery Validation
+│   │   ├── css/                # site.css
+│   │   └── js/                 # site.js
+│   ├── Data/                   # CampusRentDbContext, DbSeeder
+│   ├── Services/               # HaversineService, LivingCostService, ProfanityFilterService
+│   ├── appsettings.json        # Chuỗi kết nối CSDL và cấu hình
+│   ├── Program.cs              # Cấu hình MVC pipeline, UseStaticFiles, MapControllerRoute
 │   └── CampusRent.Server.csproj
+├── docs/                       # Tài liệu đặc tả hệ thống, sơ đồ UseCase, Activity, Class, DBML
 ├── CLAUDE.md                   # Tài liệu đặc tả kỹ thuật chi tiết
 └── README.md
 ```

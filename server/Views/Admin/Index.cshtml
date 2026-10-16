@@ -1,0 +1,68 @@
+@{
+    ViewData["Title"] = "Quản trị hệ thống";
+}
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <h2 class="fw-bold text-primary">Bảng điều khiển quản trị (Admin Dashboard)</h2>
+        <p class="text-muted">Quản lý duyệt bài đăng, báo cáo vi phạm và thống kê người dùng.</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white p-3 shadow-sm">
+            <h6>Tổng người dùng</h6>
+            <h3 class="fw-bold mb-0">128</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white p-3 shadow-sm">
+            <h6>Phòng trọ đang hiển thị</h6>
+            <h3 class="fw-bold mb-0">45</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-dark p-3 shadow-sm">
+            <h6>Báo cáo chờ xử lý</h6>
+            <h3 class="fw-bold mb-0">3</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white p-3 shadow-sm">
+            <h6>Sinh viên đã xác thực</h6>
+            <h3 class="fw-bold mb-0">82</h3>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm p-4 mt-3">
+    <h5 class="fw-bold mb-3">Danh sách báo cáo vi phạm cần duyệt</h5>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Người báo cáo</th>
+                    <th>Đối tượng</th>
+                    <th>Lý do</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- TODO: Thành viên nhóm truyền model danh sách báo cáo vào View này -->
+                <tr>
+                    <td>16/10/2026</td>
+                    <td>nguyenvanan@sis.hust.edu.vn</td>
+                    <td>Phòng trọ #102</td>
+                    <td>Giá thực tế cao hơn giá đăng</td>
+                    <td><span class="badge bg-warning text-dark">Chờ duyệt</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-success me-1">Duyệt & Ẩn</button>
+                        <button class="btn btn-sm btn-outline-secondary">Bác bỏ</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

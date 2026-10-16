@@ -1,0 +1,45 @@
+@{
+    ViewData["Title"] = "Danh sách phòng trọ";
+}
+
+<div class="row">
+    <!-- Bộ lọc tìm kiếm -->
+    <div class="col-md-3 mb-4">
+        <div class="card shadow-sm p-3">
+            <h5 class="fw-bold mb-3">Bộ lọc tìm kiếm</h5>
+            <form method="get">
+                <div class="mb-3">
+                    <label class="form-label">Trường Đại học</label>
+                    <select name="UniversityId" class="form-select">
+                        <option value="">Tất cả các trường</option>
+                        <option value="bkhn">ĐH Bách Khoa Hà Nội</option>
+                        <option value="neu">ĐH Kinh Tế Quốc Dân</option>
+                        <option value="uet">ĐH Công Nghệ - ĐHQGHN</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Khoảng cách</label>
+                    <select name="Radius" class="form-select">
+                        <option value="1">Dưới 1 km</option>
+                        <option value="3" selected>Dưới 3 km</option>
+                        <option value="5">Dưới 5 km</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mức giá tối đa (VNĐ)</label>
+                    <input type="number" name="MaxPrice" class="form-control" placeholder="Ví dụ: 4000000" />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Áp dụng lọc</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Danh sách kết quả -->
+    <div class="col-md-9">
+        <h4 class="fw-bold mb-3">Kết quả tìm kiếm phòng trọ</h4>
+        <!-- TODO: Thành viên nhóm duyệt foreach trên Model danh sách phòng trọ từ controller -->
+        <div class="alert alert-info">
+            Hiển thị danh sách kết quả theo bộ lọc. (Thành viên nhóm kết nối dữ liệu từ CSDL vào View này).
+        </div>
+    </div>
+</div>

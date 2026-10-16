@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"] = "Trang chủ - Tìm phòng trọ sinh viên";
+}
+
+<div class="p-5 mb-4 bg-light rounded-3 text-center border">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-primary">Tìm trọ gần trường Đại học</h1>
+        <p class="fs-5 text-muted">Lọc phòng theo bán kính thực tế, đánh giá minh bạch và dự toán chi phí sinh hoạt hàng tháng.</p>
+        
+        <!-- Form tìm kiếm template -->
+        <form asp-controller="Rooms" asp-action="Index" method="get" class="row g-3 justify-content-center mt-3">
+            <div class="col-md-4">
+                <select name="UniversityId" class="form-select form-select-lg">
+                    <option value="">-- Chọn trường Đại học --</option>
+                    <option value="bkhn">Đại học Bách Khoa Hà Nội (BKHN)</option>
+                    <option value="neu">Đại học Kinh Tế Quốc Dân (NEU)</option>
+                    <option value="uet">ĐH Công Nghệ - ĐHQGHN (UET)</option>
+                    <option value="hnue">Đại học Sư Phạm Hà Nội (HNUE)</option>
+                    <option value="utc">Đại học Giao Thông Vận Tải (UTC)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="Radius" class="form-select form-select-lg">
+                    <option value="1">Bán kính 1 km</option>
+                    <option value="3" selected>Bán kính 3 km</option>
+                    <option value="5">Bán kính 5 km</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="Keyword" class="form-control form-select-lg" placeholder="Nhập tên đường, khu vực..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-lg w-100">Tìm kiếm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 mb-3">
+        <h3 class="fw-bold">Phòng trọ mới đăng quanh các trường</h3>
+    </div>
+    <!-- TODO: Thành viên nhóm truyền model List<Room> vào View và lặp hiển thị danh sách phòng -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600" class="card-img-top" alt="Room thumbnail" style="height: 200px; object-fit: cover;">
+            <div class="card-body">
+                <span class="badge bg-success mb-2">Cách BKHN 600m</span>
+                <h5 class="card-title fw-bold">Phòng khép kín ban công Tạ Quang Bửu</h5>
+                <p class="card-text text-muted small">Số 15 ngõ 30 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-danger fw-bold fs-5">3.200.000 đ/tháng</span>
+                    <a asp-controller="Rooms" asp-action="Details" asp-route-id="1" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600" class="card-img-top" alt="Room thumbnail" style="height: 200px; object-fit: cover;">
+            <div class="card-body">
+                <span class="badge bg-success mb-2">Cách NEU 400m</span>
+                <h5 class="card-title fw-bold">Chung cư mini có gác lửng Giải Phóng</h5>
+                <p class="card-text text-muted small">Ngõ 205 Giải Phóng, Hai Bà Trưng, Hà Nội</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-danger fw-bold fs-5">4.500.000 đ/tháng</span>
+                    <a asp-controller="Rooms" asp-action="Details" asp-route-id="2" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600" class="card-img-top" alt="Room thumbnail" style="height: 200px; object-fit: cover;">
+            <div class="card-body">
+                <span class="badge bg-success mb-2">Cách UET 500m</span>
+                <h5 class="card-title fw-bold">Studio khép kín đầy đủ đồ Xuân Thủy</h5>
+                <p class="card-text text-muted small">Ngõ 175 Xuân Thủy, Cầu Giấy, Hà Nội</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-danger fw-bold fs-5">3.800.000 đ/tháng</span>
+                    <a asp-controller="Rooms" asp-action="Details" asp-route-id="3" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
