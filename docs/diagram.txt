@@ -1,0 +1,309 @@
+// ============================================================================
+// CAMPUSRENT - DATABASE SCHEMA IN DBML (Database Markup Language)
+// Compatible with https://dbdiagram.io/d
+// Standard: 3NF (Third Normal Form) | Database: PostgreSQL
+// ============================================================================
+
+Project CampusRent {
+  database_type: 'PostgreSQL'
+  Note: 'CampusRent Database Schema (3NF) - Nền tảng tìm kiếm và quản lý phòng trọ sinh viên'
+}
+
+// ============================================================================
+// 1. ENUMS
+// ============================================================================
+
+Enum user_role {
+  STUDENT [note: 'Sinh viên tìm trọ']
+  LANDLORD [note: 'Chủ trọ / Người cho thuê']
+  ADMIN [note: 'Quản trị viên hệ thống']
+}
+
+Enum room_type {
+  ROOM [note: 'Phòng đơn / khép kín']
+  SHARED_ROOM [note: 'Ở ghép']
+  MINI_APARTMENT [note: 'Chung cư mini']
+  STUDIO [note: 'Căn hộ studio']
+  HOUSE [note: 'Nhà nguyên căn']
+  DORMITORY [note: 'Ký túc xá tư nhân']
+}
+
+Enum post_status {
+  DRAFT [note: 'Bản nháp']
+  PENDING_APPROVAL [note: 'Chờ duyệt']
+  AVAILABLE [note: 'Đang hiển thị còn phòng']
+  RENTED [note: 'Đã cho thuê']
+  HIDDEN [note: 'Tạm ẩn bởi chủ nhà']
+  EXPIRED [note: 'Quá hạn 30 ngày']
+}
+
+Enum utility_billing_type {
+  PER_UNIT [note: 'Tính theo công tơ (kWh / m3)']
+  PER_PERSON [note: 'Tính theo đầu người / tháng']
+  FIXED [note: 'Trọn gói cố định / phòng / tháng']
+  FREE [note: 'Miễn phí hoàn toàn']
+}
+
+Enum report_target_type {
+  POST [note: 'Báo cáo bài đăng']
+  REVIEW [note: 'Báo cáo bình luận']
+  USER [note: 'Báo cáo người dùng']
+}
+
+Enum report_status {
+  PENDING [note: 'Chờ xử lý']
+  IN_REVIEW [note: 'Đang kiểm tra']
+  RESOLVED [note: 'Đã xử lý vi phạm']
+  DISMISSED [note: 'Bác bỏ (báo cáo sai)']
+}
+
+Enum appointment_status {
+  PENDING [note: 'Chờ chủ trọ xác nhận']
+  ACCEPTED [note: 'Đồng ý lịch hẹn']
+  REJECTED [note: 'Từ chối']
+  CANCELLED [note: 'Sinh viên hủy']
+  COMPLETED [note: 'Đã xem phòng']
+}
+
+// ============================================================================
+// 2. CORE TABLES
+// ============================================================================
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255) [not null]
+  full_name varchar(150) [not null]
+  phone_number varchar(20)
+  avatar_url text
+  role user_role [not null, default: 'STUDENT']
+  is_edu_verified boolean [not null, default: false]
+  edu_email varchar(255) [unique]
+  verified_at timestamptz
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    email
+    role
+    is_edu_verified
+  }
+
+  Note: 'Bảng người dùng hệ thống (Sinh viên, Chủ trọ, Admin)'
+}
+
+Table amenities {
+  id uuid [pk, default: `gen_random_uuid()`]
+  code varchar(50) [not null, unique, note: 'air_conditioner, wifi, private_bathroom...']
+  name varchar(100) [not null, note: 'Điều hòa, Wifi, Vệ sinh khép kín...']
+  icon varchar(100) [note: 'Lucide icon slug']
+  category varchar(50) [not null, default: 'GENERAL']
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Danh mục tiện nghi dùng chung'
+}
+
+Table posts {
+  id uuid [pk, default: `gen_random_uuid()`]
+  landlord_id uuid [not null]
+  title varchar(255) [not null]
+  description text [not null]
+  room_type room_type [not null, default: 'ROOM']
+  street_address varchar(255) [not null]
+  ward varchar(100) [not null]
+  district varchar(100) [not null]
+  city varchar(100) [not null, default: 'Hà Nội']
+  full_address varchar(500) [not null]
+  latitude decimal(10,7) [not null]
+  longitude decimal(10,7) [not null]
+  area_sqm decimal(6,2) [not null]
+  max_tenants int [not null, default: 2]
+  floor_number int
+  total_floors int
+  base_price decimal(12,2) [not null]
+  deposit decimal(12,2) [not null, default: 0]
+  electricity_price decimal(10,2) [not null, default: 0]
+  electricity_billing utility_billing_type [not null, default: 'PER_UNIT']
+  water_price decimal(10,2) [not null, default: 0]
+  water_billing utility_billing_type [not null, default: 'PER_UNIT']
+  internet_price decimal(10,2) [not null, default: 0]
+  service_fee decimal(10,2) [not null, default: 0]
+  status post_status [not null, default: 'AVAILABLE']
+  views_count int [not null, default: 0]
+  expires_at timestamptz [not null]
+  published_at timestamptz [not null, default: `now()`]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    landlord_id
+    status
+    (latitude, longitude)
+    base_price
+    (status, expires_at)
+    published_at
+  }
+
+  Note: 'Tin đăng cho thuê phòng trọ'
+}
+
+Table post_amenities {
+  post_id uuid [not null]
+  amenity_id uuid [not null]
+  note varchar(255)
+
+  indexes {
+    (post_id, amenity_id) [pk]
+    amenity_id
+  }
+
+  Note: 'Bảng liên kết nhiều-nhiều giữa bài đăng và tiện nghi'
+}
+
+Table post_images {
+  id uuid [pk, default: `gen_random_uuid()`]
+  post_id uuid [not null]
+  image_url text [not null]
+  cloudinary_public_id varchar(255)
+  display_order int [not null, default: 0]
+  is_cover boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (post_id, display_order)
+  }
+
+  Note: 'Hình ảnh đính kèm bài đăng'
+}
+
+Table reviews {
+  id uuid [pk, default: `gen_random_uuid()`]
+  post_id uuid [not null]
+  user_id uuid [not null]
+  rating smallint [not null]
+  comment text [not null]
+  is_flagged boolean [not null, default: false]
+  flag_reason varchar(255)
+  landlord_reply text
+  replied_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    post_id
+    user_id
+    is_flagged
+    (user_id, post_id) [unique]
+  }
+
+  Note: 'Đánh giá và nhận xét của sinh viên'
+}
+
+Table saved_posts {
+  user_id uuid [not null]
+  post_id uuid [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, post_id) [pk]
+    post_id
+  }
+
+  Note: 'Tin đăng được sinh viên lưu yêu thích'
+}
+
+Table viewing_appointments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  post_id uuid [not null]
+  student_id uuid [not null]
+  appointment_time timestamptz [not null]
+  contact_phone varchar(20) [not null]
+  note text
+  status appointment_status [not null, default: 'PENDING']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    post_id
+    student_id
+    status
+  }
+
+  Note: 'Lịch hẹn xem phòng giữa sinh viên và chủ trọ'
+}
+
+Table reports {
+  id uuid [pk, default: `gen_random_uuid()`]
+  reporter_id uuid [not null]
+  target_type report_target_type [not null]
+  post_id uuid
+  review_id uuid
+  reported_user_id uuid
+  reason varchar(255) [not null]
+  description text
+  status report_status [not null, default: 'PENDING']
+  resolved_by uuid
+  resolution_notes text
+  resolved_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    status
+    post_id
+    review_id
+    reported_user_id
+    reporter_id
+  }
+
+  Note: 'Báo cáo vi phạm (bài đăng, đánh giá, người dùng)'
+}
+
+// ============================================================================
+// 3. RELATIONSHIPS (FOREIGN KEYS)
+// ============================================================================
+
+Ref: posts.landlord_id > users.id [delete: cascade]
+
+Ref: post_amenities.post_id > posts.id [delete: cascade]
+Ref: post_amenities.amenity_id > amenities.id [delete: restrict]
+
+Ref: post_images.post_id > posts.id [delete: cascade]
+
+Ref: reviews.post_id > posts.id [delete: cascade]
+Ref: reviews.user_id > users.id [delete: cascade]
+
+Ref: saved_posts.user_id > users.id [delete: cascade]
+Ref: saved_posts.post_id > posts.id [delete: cascade]
+
+Ref: viewing_appointments.post_id > posts.id [delete: cascade]
+Ref: viewing_appointments.student_id > users.id [delete: cascade]
+
+Ref: reports.reporter_id > users.id [delete: cascade]
+Ref: reports.post_id > posts.id [delete: cascade]
+Ref: reports.review_id > reviews.id [delete: cascade]
+Ref: reports.reported_user_id > users.id [delete: cascade]
+Ref: reports.resolved_by > users.id [delete: set null]
+
+// ============================================================================
+// 4. TABLE GROUPS (FOR CLEAN VISUAL CLUSTERING)
+// ============================================================================
+
+TableGroup Users_Management {
+  users
+}
+
+TableGroup Posts_Management {
+  posts
+  post_images
+  amenities
+  post_amenities
+}
+
+TableGroup Interactions_And_Operations {
+  reviews
+  saved_posts
+  viewing_appointments
+  reports
+}

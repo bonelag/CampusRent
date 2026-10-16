@@ -1,46 +1,84 @@
-# Dependencies
+# ============================================================================
+# .NET / C# / Visual Studio
+# ============================================================================
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.DotSettings.user
+*.patch
+*.diff
+_ReSharper*/
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ============================================================================
+# Node.js / JavaScript / Frontend (React + Vite)
+# ============================================================================
 node_modules/
-/.pnp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnp/
 .pnp.js
 
-# Environment variables (giữ lại các file *.example)
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+.cache/
+
+# ============================================================================
+# Environment Variables & Secrets (Keep *.example files)
+# ============================================================================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
+!*.example
+!*.env.example
 
-# Production build outputs
-dist/
-dist-ssr/
-build/
-out/
-CLAUDE.md
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
+coverage/
+.nyc_output/
+*.lcov
 
+# ============================================================================
 # Editor & IDEs
-.vscode/
+# ============================================================================
 .idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 *.sublime-project
 *.sublime-workspace
 .cursor/
 
-# OS metadata
+# ============================================================================
+# OS Metadata & Temp Files
+# ============================================================================
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Caches & Temp
-.cache/
-.vite/
-coverage/
-.nyc_output/
 *.tmp
 *.temp

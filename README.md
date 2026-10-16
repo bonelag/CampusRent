@@ -17,7 +17,7 @@ Nền tảng web tìm kiếm và đánh giá phòng trọ sinh viên lấy các 
 ## 🛠 Công nghệ sử dụng (Tech Stack)
 
 * **Frontend:** React 18, Vite, Tailwind CSS, Leaflet / React-Leaflet, Axios, React Router v6, Lucide Icons.
-* **Backend:** Node.js (ES Modules), Express.js, Prisma ORM, JWT, Bcryptjs, Node-cron, Cloudinary SDK.
+* **Backend:** ASP.NET Core 8 (.NET 8 Web API), Entity Framework Core (EF Core 8), Npgsql (PostgreSQL), JWT Bearer Authentication, BCrypt.Net, BackgroundService, CloudinaryDotNet.
 * **Database:** PostgreSQL (Supabase).
 
 ---
@@ -26,27 +26,27 @@ Nền tảng web tìm kiếm và đánh giá phòng trọ sinh viên lấy các 
 
 ```text
 CampusRent/
-├── client/                 # Frontend React (Vite)
-│   ├── public/             # Tài nguyên tĩnh
+├── client/                     # Frontend React (Vite)
+│   ├── public/                 # Tài nguyên tĩnh
 │   ├── src/
-│   │   ├── api/            # Cấu hình Axios & API client
-│   │   ├── components/     # UI components (Map, Room, Review)
-│   │   ├── context/        # Auth Context
-│   │   ├── hooks/          # Custom React Hooks
-│   │   ├── pages/          # Các màn hình chính
-│   │   └── routes/         # Điều hướng & bảo vệ route
+│   │   ├── api/                # Cấu hình Axios & API client
+│   │   ├── components/         # UI components (Map, Room, Review)
+│   │   ├── context/            # Auth Context
+│   │   ├── hooks/              # Custom React Hooks
+│   │   ├── pages/              # Các màn hình chính
+│   │   └── routes/             # Điều hướng & bảo vệ route
 │   └── .env.example
-├── server/                 # Backend Node.js Express
-│   ├── prisma/             # Schema CSDL & dữ liệu mẫu (Seed)
-│   ├── src/
-│   │   ├── config/         # Cấu hình Prisma, Cloudinary, JWT
-│   │   ├── controllers/    # Bộ điều khiển xử lý logic request
-│   │   ├── cron/           # Tác vụ tự động định kỳ
-│   │   ├── middlewares/    # Middleware Auth, Upload, Error
-│   │   ├── routes/         # Định tuyến RESTful API
-│   │   └── services/       # Thuật toán Haversine, lọc từ cấm, tính chi phí
-│   └── .env.example
-├── CLAUDE.md               # Tài liệu đặc tả kỹ thuật chi tiết
+├── server/                     # Backend ASP.NET Core 8 Web API
+│   ├── BackgroundServices/     # AutoExpireRoomsWorker (Quét tự ẩn phòng hết hạn 30 ngày)
+│   ├── Controllers/            # Auth, Rooms, Universities, Reviews, Reports, Admin
+│   ├── Data/                   # CampusRentDbContext, DbSeeder (Dữ liệu mẫu ĐH & trọ)
+│   ├── DTOs/                   # Data Transfer Objects (Auth, Rooms, Reviews, Reports)
+│   ├── Models/                 # Entities (User, Room, University, Review, Report) & Enums
+│   ├── Services/               # HaversineService, LivingCostService, ProfanityFilter, TokenService, Cloudinary
+│   ├── appsettings.json        # Chuỗi kết nối PostgreSQL, JWT secret, Cloudinary config
+│   ├── Program.cs              # DI, Middleware, Authentication, CORS, Swagger setup
+│   └── CampusRent.Server.csproj
+├── CLAUDE.md                   # Tài liệu đặc tả kỹ thuật chi tiết
 └── README.md
 ```
 
@@ -54,7 +54,7 @@ CampusRent/
 
 ## 🗄 Cấu trúc Cơ sở dữ liệu (Database Schema)
 
-Dự án sử dụng PostgreSQL (Supabase) quản lý qua Prisma ORM tại `server/prisma/schema.prisma`:
+Dự án sử dụng PostgreSQL (Supabase) quản lý qua Entity Framework Core (EF Core) tại `server/Data/CampusRentDbContext.cs`:
 
 ### 1. Sơ đồ quan hệ thực thể (ERD)
 
@@ -138,29 +138,44 @@ erDiagram
 ## 🚀 Hướng dẫn cài đặt & Khởi chạy
 
 ### 1. Yêu cầu hệ thống
+* .NET SDK >= 8.0
 * Node.js >= 18.x
-* Quản lý gói: `npm`
+* PostgreSQL (Local hoặc Supabase/Neon)
 
-### 2. Cài đặt thư viện
-Tại thư mục gốc, cài đặt dependencies cho cả Backend và Frontend:
+### 2. Cài đặt thư viện & dependencies
+Tại thư mục gốc:
 
 ```bash
-# Cài đặt server
-cd server
+# Cài đặt client (Frontend)
+cd client
 npm install
 
-# Cài đặt client
-cd ../client
-npm install
+# Khôi phục dependencies cho server (.NET Web API)
+cd ../server
+dotnet restore
 ```
 
 ### 3. Cấu hình biến môi trường
 
-* **Server:** Tạo file `server/.env` từ file mẫu:
-  ```bash
-  cp server/.env.example server/.env
+* **Server:** Cập nhật file `server/appsettings.json`:
+  ```json
+  {
+    "ConnectionStrings": {
+      "DefaultConnection": "Host=localhost;Port=5432;Database=campusrent;Username=postgres;Password=postgres"
+    },
+    "Jwt": {
+      "Secret": "campusrent_super_secret_jwt_key_2026_at_least_32_characters_long",
+      "Issuer": "CampusRent",
+      "Audience": "CampusRentApp"
+    },
+    "Cloudinary": {
+      "CloudName": "your_cloud_name",
+      "ApiKey": "your_api_key",
+      "ApiSecret": "your_api_secret"
+    },
+    "ClientUrl": "http://localhost:5173"
+  }
   ```
-  Cập nhật chuỗi kết nối Supabase (`DATABASE_URL`, `DIRECT_URL`), khóa JWT và cấu hình Cloudinary.
 
 * **Client:** Tạo file `client/.env` từ file mẫu:
   ```bash
@@ -170,24 +185,18 @@ npm install
 
 ### 4. Khởi tạo Cơ sở dữ liệu (Database)
 
-Tại thư mục `server`:
-```bash
-# Đồng bộ Schema lên Supabase
-npx prisma db push
-
-# Nạp dữ liệu mẫu (30 phòng trọ thực tế kèm tài khoản mẫu)
-npm run seed
-```
+Khi khởi động ứng dụng ASP.NET Core lần đầu, `DbSeeder` sẽ tự động khởi tạo bảng (`EnsureCreated`) và nạp sẵn 5 trường Đại học lớn tại Hà Nội kèm các tài khoản mẫu và phòng trọ thực tế.
 
 ### 5. Chạy ứng dụng
 
-* **Khởi chạy Backend (Port 5000):**
+* **Khởi chạy Backend ASP.NET Core (Port 5000):**
   ```bash
   cd server
-  npm run dev
+  dotnet run --urls="http://localhost:5000"
   ```
+  Truy cập tài liệu Swagger UI tại: `http://localhost:5000/swagger`
 
-* **Khởi chạy Frontend (Port 5173):**
+* **Khởi chạy Frontend React (Port 5173):**
   ```bash
   cd client
   npm run dev
