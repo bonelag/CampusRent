@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "format:check": "prettier --check src e2e *.js *.json index.html",
+    "format": "prettier --write src e2e *.js *.json index.html"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -30,6 +32,7 @@
     "autoprefixer": "^10.4.20",
     "jsdom": "^26.1.0",
     "postcss": "^8.4.49",
+    "prettier": "^3.9.10",
     "vite": "^6.0.7",
     "vitest": "^5.0.5"
   }

@@ -15,6 +15,7 @@ public class AuthController(CampusRentDbContext db, ITokenService tokens) : Cont
     public async Task<IActionResult> Register(RegisterRequestDto dto)
     {
         if (dto.Role is not (Role.STUDENT or Role.LANDLORD)) return BadRequest(ApiResponse<object>.Fail("Vai trò đăng ký không hợp lệ."));
+        if (System.Text.Encoding.UTF8.GetByteCount(dto.Password) > 72) return BadRequest(ApiResponse<object>.Fail("Mật khẩu vượt quá 72 byte. Vui lòng chọn mật khẩu ngắn hơn."));
         var email = dto.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(u => u.Email == email)) return Conflict(ApiResponse<object>.Fail("Email đã được sử dụng."));
         var user = new User { Email = email, Password = BCrypt.Net.BCrypt.HashPassword(dto.Password), FullName = dto.FullName.Trim(), PhoneNumber = dto.PhoneNumber, Role = dto.Role };

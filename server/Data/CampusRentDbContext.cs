@@ -22,7 +22,13 @@ public class CampusRentDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<Favorite>().HasKey(f => new { f.UserId, f.RoomId });
-        modelBuilder.Entity<Booking>().HasIndex(b => new { b.StudentId, b.RoomId, b.VisitAt }).IsUnique();
+        modelBuilder.Entity<Booking>().HasIndex(b => new { b.StudentId, b.RoomId }).IsUnique()
+            .HasFilter("\"Status\" IN ('PENDING', 'CONFIRMED')");
+        modelBuilder.Entity<University>().HasIndex(u => u.ShortName).IsUnique();
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+            foreach (var property in entity.GetProperties().Where(p => p.ClrType == typeof(DateTime)))
+                property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+                    value => value.ToUniversalTime(), value => DateTime.SpecifyKind(value, DateTimeKind.Utc)));
         modelBuilder.Entity<Room>().Property(r => r.Amenities).HasConversion(
             v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
             v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)!)

@@ -9,6 +9,8 @@ public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpi
         var now = DateTime.UtcNow;
         var rooms = await db.Rooms.Where(r => r.Status == RoomStatus.AVAILABLE && r.ExpiresAt <= now).ToListAsync(token);
         foreach (var room in rooms) { room.Status = RoomStatus.HIDDEN; room.UpdatedAt = now; }
+        var bookings = await db.Bookings.Where(b => (b.Status == "PENDING" || b.Status == "CONFIRMED") && b.VisitAt <= now).ToListAsync(token);
+        foreach (var booking in bookings) booking.Status = "COMPLETED";
         await db.SaveChangesAsync(token);
         return rooms.Count;
     }

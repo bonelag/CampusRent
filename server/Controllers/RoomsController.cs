@@ -10,7 +10,7 @@ namespace CampusRent.Server.Controllers;
 [ApiController, Route("api/rooms")]
 public class RoomsController(CampusRentDbContext db, IHaversineService haversine, ILivingCostService costs) : ControllerBase
 {
-    private IQueryable<Room> Loaded => db.Rooms.Include(r => r.Images).Include(r => r.Reviews);
+    private IQueryable<Room> Loaded => db.Rooms.Include(r => r.Images).Include(r => r.Reviews).AsSplitQuery();
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] RoomQueryParameters q)
     {

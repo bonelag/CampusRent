@@ -50,6 +50,9 @@ public class ActivityController(CampusRentDbContext db) : ControllerBase
         if (room.LandlordId == User.UserId()) return BadRequest(ApiResponse<object>.Fail("Không thể đặt lịch với chính mình."));
         var visit = dto.VisitAt.UtcDateTime;
         if (visit < DateTime.UtcNow.AddHours(1) || visit > DateTime.UtcNow.AddDays(30)) return BadRequest(ApiResponse<object>.Fail("Chọn lịch sau ít nhất 1 giờ và trong 30 ngày tới."));
+        var oldBookings = await db.Bookings.Where(b => b.RoomId == roomId && b.StudentId == User.UserId() && (b.Status == "PENDING" || b.Status == "CONFIRMED") && b.VisitAt <= DateTime.UtcNow).ToListAsync();
+        foreach (var old in oldBookings) old.Status = "COMPLETED";
+        await db.SaveChangesAsync();
         if (await db.Bookings.AnyAsync(b => b.RoomId == roomId && b.StudentId == User.UserId() && b.Status != "CANCELLED" && b.VisitAt > DateTime.UtcNow))
             return Conflict(ApiResponse<object>.Fail("Bạn đã có lịch xem phòng này. Hãy hủy lịch cũ trước."));
         var b = new Booking { RoomId = roomId, StudentId = User.UserId(), VisitAt = visit, Note = dto.Note.Trim() };

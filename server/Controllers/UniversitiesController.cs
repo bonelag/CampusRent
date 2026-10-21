@@ -13,8 +13,11 @@ public class UniversitiesController(CampusRentDbContext db) : ControllerBase
     [HttpPost, Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Create(CreateUniversityDto dto)
     {
+        if (await db.Universities.AnyAsync(u => u.ShortName == dto.ShortName.Trim().ToUpper())) return Conflict(ApiResponse<object>.Fail("Mã trường đã tồn tại."));
         var university = new University { Name = dto.Name.Trim(), ShortName = dto.ShortName.Trim(), Address = dto.Address, Latitude = dto.Latitude, Longitude = dto.Longitude };
-        db.Universities.Add(university); await db.SaveChangesAsync();
+        university.ShortName = university.ShortName.ToUpperInvariant();
+        db.Universities.Add(university);
+        try { await db.SaveChangesAsync(); } catch (DbUpdateException) { return Conflict(ApiResponse<object>.Fail("Mã trường đã tồn tại.")); }
         return Ok(ApiResponse<object>.Ok(new { university.Id, university.Name, university.ShortName, university.Address, university.Latitude, university.Longitude }));
     }
 }

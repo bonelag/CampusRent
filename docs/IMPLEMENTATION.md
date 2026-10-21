@@ -28,3 +28,10 @@ Các tài khoản mẫu chỉ được nạp ở Development. Production sử d�
 - 15 test frontend, 34 test backend và 12 E2E desktop/mobile đạt.
 - E2E tìm được lỗi cập nhật ảnh của EF; đã sửa và bổ sung test hồi quy.
 
+
+## Mốc 5
+- Cập nhật thư viện .NET có cảnh báo; NuGet và npm hiện không có advisory được phát hiện.
+- Bổ sung kiểm tra JWT, rate limit, upload giả, Unicode, quyền quản trị, lịch trùng và UTC; 46 backend + 15 frontend + 16 E2E đạt.
+- Test PostgreSQL được cấu hình chạy ở CI; local bỏ qua 1 ca vì chưa có PostgreSQL.
+- Chuẩn hóa định dạng frontend, thêm error boundary và giới hạn input; tạo migration PostgreSQL ban đầu cùng SQL để review.
+

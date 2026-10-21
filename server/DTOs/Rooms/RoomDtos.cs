@@ -22,22 +22,22 @@ public class CreateRoomDto
     [Range(-90, 90)] public double Latitude { get; set; }
     [Range(-180, 180)] public double Longitude { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0, 999999999)]
     public decimal BasePrice { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0, 999999999)]
     public decimal ElectricPrice { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0, 999999999)]
     public decimal WaterPrice { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0, 999999999)]
     public decimal InternetPrice { get; set; } = 0;
 
-    [Range(0, double.MaxValue)]
+    [Range(0, 999999999)]
     public decimal OtherFee { get; set; } = 0;
 
-    [Range(1, double.MaxValue)]
+    [Range(1, 10000)]
     public double Area { get; set; }
 
     [Range(1, 100)]
@@ -146,3 +146,4 @@ public class CostEstimateDto
     public decimal OtherFee { get; set; }
     public decimal TotalEstimatedMonthlyCost { get; set; }
 }
+

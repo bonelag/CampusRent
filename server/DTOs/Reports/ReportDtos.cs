@@ -12,7 +12,7 @@ public class CreateReportDto
     [Required, MaxLength(255)]
     public string Reason { get; set; } = string.Empty;
 
-    public string? Description { get; set; }
+    [MaxLength(3000)] public string? Description { get; set; }
 }
 
 public class ResolveReportDto

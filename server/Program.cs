@@ -9,10 +9,21 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-var builder = WebApplication.CreateBuilder(args);
+if (args.Contains("--healthcheck"))
+{
+    try
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        var response = await client.GetAsync("http://127.0.0.1:8080/health");
+        Environment.ExitCode = response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch { Environment.ExitCode = 1; }
+    return;
+}
+var builder = WebApplication.CreateBuilder(args.Where(a => a != "--migrate").ToArray());
 var development = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 var secret = builder.Configuration["Jwt:Secret"];
-if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32)
+if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32 || secret.StartsWith("CHANGE_ME"))
 {
     if (!development) throw new InvalidOperationException("Set Jwt__Secret to a random secret of at least 32 bytes.");
     secret = "CampusRent-local-development-only-secret-2026";
@@ -60,6 +71,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (!development)
+        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
     try { await next(); }
     catch (Exception ex) when (!context.Response.HasStarted)
     {
@@ -71,7 +84,11 @@ app.Use(async (context, next) =>
 if (!development) app.UseHsts();
 if (development) { app.UseSwagger(); app.UseSwaggerUI(); }
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl =
+        context.Context.Request.Path.StartsWithSegments("/assets") ? "public,max-age=31536000,immutable" : "no-cache"
+});
 app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();
@@ -85,18 +102,23 @@ app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
-    if (development) await db.Database.EnsureCreatedAsync();
+    if (development)
+    {
+        if (db.Database.IsNpgsql()) await db.Database.MigrateAsync();
+        else await db.Database.EnsureCreatedAsync();
+    }
     if (args.Contains("--migrate"))
     {
         await db.Database.MigrateAsync();
         return;
     }
     if (builder.Environment.IsDevelopment()) await DbSeeder.SeedAsync(db);
+    if (!development) await DbSeeder.SeedReferenceAsync(db);
     var adminEmail = builder.Configuration["Admin:Email"];
     var adminPassword = builder.Configuration["Admin:Password"];
     if (!development && !string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
     {
-        if (adminPassword.Length < 12) throw new InvalidOperationException("Admin password must contain at least 12 characters.");
+        if (adminPassword.Length < 12 || adminPassword.StartsWith("CHANGE_ME")) throw new InvalidOperationException("Set a unique admin password of at least 12 characters.");
         adminEmail = adminEmail.Trim().ToLowerInvariant();
         if (!await db.Users.AnyAsync(u => u.Email == adminEmail))
         {

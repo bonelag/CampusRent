@@ -5,9 +5,9 @@ namespace CampusRent.Server.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(CampusRentDbContext dbContext)
+    public static async Task SeedReferenceAsync(CampusRentDbContext dbContext)
     {
-        if (await dbContext.Universities.AnyAsync() || await dbContext.Users.AnyAsync())
+        if (await dbContext.Universities.AnyAsync())
         {
             return; // Đã có dữ liệu
         }
@@ -57,7 +57,18 @@ public static class DbSeeder
         dbContext.Universities.AddRange(hust, neu, uet, hnue, utc);
         await dbContext.SaveChangesAsync();
 
-        // 2. Seed Users
+    }
+
+    public static async Task SeedAsync(CampusRentDbContext dbContext)
+    {
+        await SeedReferenceAsync(dbContext);
+        if (await dbContext.Users.AnyAsync()) return;
+        var hust = await dbContext.Universities.SingleAsync(u => u.ShortName == "BKHN");
+        var neu = await dbContext.Universities.SingleAsync(u => u.ShortName == "NEU");
+        var uet = await dbContext.Universities.SingleAsync(u => u.ShortName == "UET");
+        var hnue = await dbContext.Universities.SingleAsync(u => u.ShortName == "HNUE");
+        var utc = await dbContext.Universities.SingleAsync(u => u.ShortName == "UTC");
+        // Development demo accounts only.
         var hash = BCrypt.Net.BCrypt.HashPassword("Password@123");
 
         var admin = new User

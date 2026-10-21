@@ -5,7 +5,107 @@ import { useApp } from '../context/AppContext';
 import { api } from '../lib/api';
 import { PageTitle } from '../components/Common';
 export default function AccountPage() {
-  const { user,setUser,saved,notify,logout } = useApp(); const [busy,setBusy] = useState(false),[error,setError] = useState('');
-  async function submit(e) { e.preventDefault(); setBusy(true); setError(''); const data = new FormData(e.currentTarget); try { setUser(await api('/auth/me',{method:'PUT',body:{fullName:data.get('fullName'),phoneNumber:data.get('phoneNumber')}})); notify('Đã cập nhật thông tin của bạn.'); } catch(e) {setError(e.message);} finally {setBusy(false);} }
-  return <div className="container page-shell"><PageTitle eyebrow="GÓC NHỎ CỦA BẠN" title={'Xin chào, '+user.fullName.split(' ').at(-1)+'.'} text="Quản lý thông tin và những kế hoạch cho nơi ở tiếp theo."/><div className="account-layout"><aside className="profile-card"><span className="avatar large">{user.fullName.charAt(0)}</span><h2>{user.fullName}</h2><p>{user.email}</p><span className="status-pill confirmed">{user.role==='ADMIN'?'Quản trị viên':user.role==='LANDLORD'?'Chủ trọ':'Sinh viên'}</span><small>Tham gia từ {new Date(user.createdAt).toLocaleDateString('vi-VN')}</small><button className="text-button" onClick={logout}><LogOut size={15}/> Đăng xuất</button></aside><div><div className="account-shortcuts"><Link to="/saved"><Heart/><strong>{saved.length} phòng đã lưu</strong><ArrowUpRight size={17}/></Link><Link to="/bookings"><CalendarDays/><strong>Lịch hẹn của tôi</strong><ArrowUpRight size={17}/></Link>{['LANDLORD','ADMIN'].includes(user.role) && <Link to="/my-rooms"><House/><strong>Quản lý tin đăng</strong><ArrowUpRight size={17}/></Link>}</div><section className="panel"><h2>Thông tin cá nhân</h2><p className="muted">Giúp chủ trọ và người thuê liên hệ với bạn thuận tiện hơn.</p><form className="form" onSubmit={submit}><div className="form-row"><label>Họ và tên<input name="fullName" required maxLength="150" defaultValue={user.fullName}/></label><label>Số điện thoại<input name="phoneNumber" type="tel" maxLength="20" defaultValue={user.phoneNumber || ''}/></label></div><label>Email<input value={user.email} disabled readOnly/></label>{error && <div role="alert" className="form-error">{error}</div>}<button className="button primary align-start" disabled={busy}>{busy?'Đang lưu…':'Lưu thay đổi'}</button></form></section></div></div></div>;
+  const { user, setUser, saved, notify, logout } = useApp();
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    const data = new FormData(e.currentTarget);
+    try {
+      setUser(
+        await api('/auth/me', {
+          method: 'PUT',
+          body: { fullName: data.get('fullName'), phoneNumber: data.get('phoneNumber') },
+        })
+      );
+      notify('Đã cập nhật thông tin của bạn.');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="container page-shell">
+      <PageTitle
+        eyebrow="GÓC NHỎ CỦA BẠN"
+        title={'Xin chào, ' + user.fullName.split(' ').at(-1) + '.'}
+        text="Quản lý thông tin và những kế hoạch cho nơi ở tiếp theo."
+      />
+      <div className="account-layout">
+        <aside className="profile-card">
+          <span className="avatar large">{user.fullName.charAt(0)}</span>
+          <h2>{user.fullName}</h2>
+          <p>{user.email}</p>
+          <span className="status-pill confirmed">
+            {user.role === 'ADMIN'
+              ? 'Quản trị viên'
+              : user.role === 'LANDLORD'
+                ? 'Chủ trọ'
+                : 'Sinh viên'}
+          </span>
+          <small>Tham gia từ {new Date(user.createdAt).toLocaleDateString('vi-VN')}</small>
+          <button className="text-button" onClick={logout}>
+            <LogOut size={15} /> Đăng xuất
+          </button>
+        </aside>
+        <div>
+          <div className="account-shortcuts">
+            <Link to="/saved">
+              <Heart />
+              <strong>{saved.length} phòng đã lưu</strong>
+              <ArrowUpRight size={17} />
+            </Link>
+            <Link to="/bookings">
+              <CalendarDays />
+              <strong>Lịch hẹn của tôi</strong>
+              <ArrowUpRight size={17} />
+            </Link>
+            {['LANDLORD', 'ADMIN'].includes(user.role) && (
+              <Link to="/my-rooms">
+                <House />
+                <strong>Quản lý tin đăng</strong>
+                <ArrowUpRight size={17} />
+              </Link>
+            )}
+          </div>
+          <section className="panel">
+            <h2>Thông tin cá nhân</h2>
+            <p className="muted">Giúp chủ trọ và người thuê liên hệ với bạn thuận tiện hơn.</p>
+            <form className="form" onSubmit={submit}>
+              <div className="form-row">
+                <label>
+                  Họ và tên
+                  <input name="fullName" required maxLength="150" defaultValue={user.fullName} />
+                </label>
+                <label>
+                  Số điện thoại
+                  <input
+                    name="phoneNumber"
+                    type="tel"
+                    maxLength="20"
+                    defaultValue={user.phoneNumber || ''}
+                  />
+                </label>
+              </div>
+              <label>
+                Email
+                <input value={user.email} disabled readOnly />
+              </label>
+              {error && (
+                <div role="alert" className="form-error">
+                  {error}
+                </div>
+              )}
+              <button className="button primary align-start" disabled={busy}>
+                {busy ? 'Đang lưu…' : 'Lưu thay đổi'}
+              </button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
 }

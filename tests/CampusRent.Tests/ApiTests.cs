@@ -168,5 +168,102 @@ public class ApiTests : IDisposable
     [InlineData("/api/rooms?centerLat=100&centerLon=0")]
     [InlineData("/api/rooms?radius=3")]
     public async Task SearchRejectsInvalidFilters(string url) => Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync(url)).StatusCode);
+
+    private async Task Admin()
+    {
+        var id = await Register("LANDLORD");
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+        var user = (await db.Users.FindAsync(id))!; user.Role = Role.ADMIN; await db.SaveChangesAsync();
+        var token = scope.ServiceProvider.GetRequiredService<CampusRent.Server.Services.ITokenService>().GenerateToken(user);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+    [Fact] public async Task AdminResolvesReportAndHidesTarget()
+    {
+        var id = await Room(); await Register();
+        var report = await Data(await client.PostAsJsonAsync("/api/reports", new { roomId = id, reason = "Tin không đúng" }));
+        await Admin();
+        var rid = report.GetProperty("id").GetGuid();
+        await Data(await client.PatchAsJsonAsync($"/api/admin/reports/{rid}", new { status = "RESOLVED", deleteTarget = true }));
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PatchAsJsonAsync($"/api/admin/reports/{rid}", new { status = "RESOLVED" })).StatusCode);
+        client.DefaultRequestHeaders.Authorization = null;
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/rooms/{id}")).StatusCode);
+    }
+    [Fact] public async Task AdminApprovesFlaggedReview()
+    {
+        var id = await Room(); await Register();
+        var review = await Data(await client.PostAsJsonAsync($"/api/rooms/{id}/reviews", new { rating = 3, comment = "đm review cần kiểm duyệt" }));
+        await Admin();
+        var flagged = await Data(await client.GetAsync("/api/admin/reviews"));
+        Assert.Single(flagged.EnumerateArray());
+        await Data(await client.PatchAsync($"/api/admin/reviews/{review.GetProperty("id").GetGuid()}/approve", null));
+        Assert.Equal(1, (await Data(await client.GetAsync($"/api/rooms/{id}"))).GetProperty("reviewCount").GetInt32());
+    }
+    [Fact] public async Task UniversityCreationValidatesCoordinatesAndDuplicates()
+    {
+        await Admin();
+        var payload = new { name = "Đại học kiểm thử", shortName = "TEST", address = "Hà Nội", latitude = 21, longitude = 105 };
+        await Data(await client.PostAsJsonAsync("/api/universities", payload));
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/universities", payload)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/universities", new { name="Wrong", shortName="WRONG", address="test", latitude=91,longitude=0 })).StatusCode);
+    }
+    [Fact] public async Task ProfileCanBeUpdatedWithoutLeakingPassword()
+    {
+        await Register();
+        var profile = await Data(await client.PutAsJsonAsync("/api/auth/me", new { fullName="Tên đã sửa",phoneNumber="0912345678" }));
+        Assert.Equal("Tên đã sửa", profile.GetProperty("fullName").GetString());
+        Assert.False(profile.TryGetProperty("password", out _));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/auth/me", new { fullName="" })).StatusCode);
+    }
+    [Fact] public async Task CancelledBookingCanBeRebookedAtSameTime()
+    {
+        var id = await Room(); await Register();
+        var visit = DateTimeOffset.UtcNow.AddDays(2);
+        var b = await Data(await client.PostAsJsonAsync($"/api/rooms/{id}/bookings", new { visitAt=visit,note="" }));
+        await Data(await client.PatchAsJsonAsync($"/api/bookings/{b.GetProperty("id").GetGuid()}", new {status="CANCELLED"}));
+        await Data(await client.PostAsJsonAsync($"/api/rooms/{id}/bookings", new {visitAt=visit,note=""}));
+    }
+    [Fact] public async Task BookingDatesAreReturnedAsUtc()
+    {
+        var id = await Room(); await Register();
+        await Data(await client.PostAsJsonAsync($"/api/rooms/{id}/bookings", new { visitAt=DateTimeOffset.UtcNow.AddDays(2),note="" }));
+        var bookings = await Data(await client.GetAsync("/api/bookings"));
+        Assert.EndsWith("Z", bookings[0].GetProperty("visitAt").GetString());
+    }
+    [Fact] public async Task InvalidJwtCannotAccessProtectedRoute()
+    {
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer","invalid.token.value");
+        Assert.Equal(HttpStatusCode.Unauthorized,(await client.GetAsync("/api/auth/me")).StatusCode);
+    }
+    [Fact] public async Task LoginAttemptsAreRateLimited()
+    {
+        HttpResponseMessage? response = null;
+        for (var i=0;i<21;i++) response = await client.PostAsJsonAsync("/api/auth/login",new {email="none@example.com",password="wrong"});
+        Assert.Equal(HttpStatusCode.TooManyRequests,response!.StatusCode);
+    }
+    [Fact] public async Task UnicodePasswordCannotExceedBcryptByteLimit()
+    {
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync("/api/auth/register",new {email="test@example.com",password=new string('ệ',30),fullName="Test"})).StatusCode);
+    }
+    [Fact] public async Task UploadRejectsDisguisedFiles()
+    {
+        await Register("LANDLORD");
+        using var content=new MultipartFormDataContent();
+        content.Add(new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("<script>alert(1)</script>")),"file","fake.jpg");
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsync("/api/images",content)).StatusCode);
+    }
+    [Fact] public async Task RoomPayloadRejectsUnsafeImageUrls()
+    {
+        await Register("LANDLORD");
+        var payload=JsonSerializer.SerializeToNode(RoomPayload())!;
+        payload["imageUrls"]=new System.Text.Json.Nodes.JsonArray("javascript:alert(1)");
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync("/api/rooms",payload)).StatusCode);
+    }
+    [Fact] public async Task OwnerCannotReviewOwnListing()
+    {
+        var id=await Room();
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync($"/api/rooms/{id}/reviews",new {rating=5,comment="Tự đánh giá"})).StatusCode);
+    }
 }
+
 
