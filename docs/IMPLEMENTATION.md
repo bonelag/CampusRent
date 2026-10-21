@@ -35,3 +35,10 @@ Các tài khoản mẫu chỉ được nạp ở Development. Production sử d�
 - Test PostgreSQL được cấu hình chạy ở CI; local bỏ qua 1 ca vì chưa có PostgreSQL.
 - Chuẩn hóa định dạng frontend, thêm error boundary và giới hạn input; tạo migration PostgreSQL ban đầu cùng SQL để review.
 
+
+## Mốc 6
+- Dockerfile nhiều giai đoạn, Compose với database/migration/app và CI bao gồm PostgreSQL + container smoke test.
+- Chuẩn hóa tool manifest tương thích .NET 8 và chọn SDK 8 qua global.json.
+- README và tài liệu triển khai, kiểm thử, backup, cấu hình secret, dữ liệu lịch sử và các giới hạn đã xác minh.
+- Kết quả cuối: 48 backend, 15 frontend, 16 E2E đạt; 1 PostgreSQL test bỏ qua local. Release publish và published-app smoke đạt.
+- Cấu hình YAML parse thành công. Docker/PostgreSQL production cần chạy ở CI hoặc máy có dịch vụ; chưa deploy công khai.

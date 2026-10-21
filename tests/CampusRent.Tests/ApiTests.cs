@@ -264,6 +264,28 @@ public class ApiTests : IDisposable
         var id=await Room();
         Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync($"/api/rooms/{id}/reviews",new {rating=5,comment="Tự đánh giá"})).StatusCode);
     }
+
+    [Fact] public async Task DemoSeedIsIdempotentAndAdminStatisticsMatch()
+    {
+        using (var scope=factory.Services.CreateScope())
+        {
+            var db=scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+            await DbSeeder.SeedAsync(db); await DbSeeder.SeedAsync(db);
+            Assert.Equal(5,await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Rooms));
+            Assert.Equal(5,await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Users));
+            Assert.Equal(5,await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Universities));
+        }
+        await Admin();
+        var stats=await Data(await client.GetAsync("/api/admin/stats"));
+        Assert.Equal(5,stats.GetProperty("rooms").GetInt32());
+        Assert.Equal(5,stats.GetProperty("availableRooms").GetInt32());
+        Assert.Equal(0,(await Data(await client.GetAsync("/api/admin/reports"))).GetArrayLength());
+    }
+    [Fact] public async Task ValidImageWithoutStorageConfigurationFailsClearly()
+    {
+        await Register("LANDLORD");
+        using var content=new MultipartFormDataContent();
+        content.Add(new ByteArrayContent(new byte[]{137,80,78,71,13,10,26,10,0,0,0,0}),"file","image.png");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable,(await client.PostAsync("/api/images",content)).StatusCode);
+    }
 }
-
-
