@@ -26,8 +26,9 @@ public class LivingCostService : ILivingCostService
         decimal expectedKwh = 80,
         decimal expectedM3 = 4)
     {
-        // TODO: Thành viên nhóm triển khai:
-        // Áp dụng công thức: Tổng = basePrice + (expectedKwh * electricPrice) + (expectedM3 * waterPrice) + internetPrice + otherFee
-        return 0;
+        if (new[] { basePrice, electricPrice, waterPrice, internetPrice, otherFee, expectedKwh, expectedM3 }.Any(v => v < 0))
+            throw new ArgumentOutOfRangeException(nameof(basePrice));
+        return basePrice + expectedKwh * electricPrice + expectedM3 * waterPrice + internetPrice + otherFee;
     }
 }
+
