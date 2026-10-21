@@ -13,13 +13,14 @@ public class CreateRoomDto
     [Required, MaxLength(255)]
     public string Title { get; set; } = string.Empty;
 
+    [Required, MaxLength(10000)]
     public string Description { get; set; } = string.Empty;
 
     [Required, MaxLength(300)]
     public string Address { get; set; } = string.Empty;
 
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    [Range(-90, 90)] public double Latitude { get; set; }
+    [Range(-180, 180)] public double Longitude { get; set; }
 
     [Range(0, double.MaxValue)]
     public decimal BasePrice { get; set; }
@@ -68,10 +69,14 @@ public class UpdateRoomDto
 
 public class RoomQueryParameters
 {
+    [Range(1, 100000)] public int Page { get; set; } = 1;
+    [Range(1, 100)] public int PageSize { get; set; } = 12;
+    public string? Sort { get; set; }
+    public string? Amenity { get; set; }
     public Guid? UniversityId { get; set; }
-    public double? Radius { get; set; } // 1, 3, 5 km
-    public double? CenterLat { get; set; }
-    public double? CenterLon { get; set; }
+    [Range(0.1, 100)] public double? Radius { get; set; }
+    [Range(-90, 90)] public double? CenterLat { get; set; }
+    [Range(-180, 180)] public double? CenterLon { get; set; }
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
     public RoomStatus? Status { get; set; } = RoomStatus.AVAILABLE;

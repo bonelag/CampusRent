@@ -4,44 +4,17 @@ using CampusRent.Server.DTOs.Universities;
 using CampusRent.Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class UniversitiesController : ControllerBase
+[ApiController, Route("api/universities")]
+public class UniversitiesController(CampusRentDbContext db) : ControllerBase
 {
-    private readonly CampusRentDbContext _dbContext;
-
-    public UniversitiesController(CampusRentDbContext dbContext)
+    [HttpGet] public async Task<IActionResult> GetAll() => Ok(ApiResponse<object>.Ok(await db.Universities.OrderBy(u => u.Name).Select(u => new UniversityDto { Id = u.Id, Name = u.Name, ShortName = u.ShortName, Address = u.Address, Latitude = u.Latitude, Longitude = u.Longitude }).ToListAsync()));
+    [HttpPost, Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> Create(CreateUniversityDto dto)
     {
-        _dbContext = dbContext;
-    }
-
-    /// <summary>
-    /// Lấy danh sách tất cả các trường Đại học
-    /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<UniversityDto>>>> GetAll()
-    {
-        // TODO: Thành viên nhóm triển khai:
-        // Truy vấn danh sách trường đại học từ _dbContext.Universities và map sang List<UniversityDto>
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<List<UniversityDto>>.Fail("Chưa triển khai logic GetAll universities"));
-    }
-
-    /// <summary>
-    /// Thêm mới trường Đại học (Dành cho Admin)
-    /// </summary>
-    [HttpPost]
-    [Authorize(Roles = nameof(Role.ADMIN))]
-    public async Task<ActionResult<ApiResponse<UniversityDto>>> Create([FromBody] CreateUniversityDto dto)
-    {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Validate dữ liệu đầu vào (tên trường, mã viết tắt, tọa độ Lat/Lon)
-        // 2. Tạo thực thể University và lưu vào CSDL
-        // 3. Trả về thông tin trường vừa tạo
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<UniversityDto>.Fail("Chưa triển khai logic Create university"));
+        var university = new University { Name = dto.Name.Trim(), ShortName = dto.ShortName.Trim(), Address = dto.Address, Latitude = dto.Latitude, Longitude = dto.Longitude };
+        db.Universities.Add(university); await db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new { university.Id, university.Name, university.ShortName, university.Address, university.Latitude, university.Longitude }));
     }
 }

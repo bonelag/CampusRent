@@ -1,39 +1,26 @@
 using CampusRent.Server.Data;
 using CampusRent.Server.DTOs.Common;
 using CampusRent.Server.DTOs.Reviews;
+using CampusRent.Server.Models;
 using CampusRent.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class ReviewsController : ControllerBase
+[ApiController, Route("api/rooms/{roomId:guid}/reviews")]
+public class ReviewsController(CampusRentDbContext db, IProfanityFilterService filter) : ControllerBase
 {
-    private readonly CampusRentDbContext _dbContext;
-    private readonly IProfanityFilterService _profanityFilter;
-
-    public ReviewsController(CampusRentDbContext dbContext, IProfanityFilterService profanityFilter)
+    [HttpPost, Authorize]
+    public async Task<IActionResult> Create(Guid roomId, CreateReviewDto dto)
     {
-        _dbContext = dbContext;
-        _profanityFilter = profanityFilter;
-    }
-
-    /// <summary>
-    /// Viết nhận xét / đánh giá cho phòng trọ (kèm kiểm duyệt từ ngữ cấm)
-    /// </summary>
-    [HttpPost("/api/rooms/{roomId}/reviews")]
-    [Authorize]
-    public async Task<ActionResult<ApiResponse<Guid>>> CreateReview(Guid roomId, [FromBody] CreateReviewDto dto)
-    {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Lấy UserId từ User context
-        // 2. Kiểm tra xem người dùng đã từng đánh giá phòng này chưa (mỗi user chỉ đánh giá 1 lần/phòng)
-        // 3. Sử dụng _profanityFilter để kiểm tra từ ngữ hạn chế trong dto.Comment
-        // 4. Nếu dính từ cấm -> đánh dấu IsFlagged = true
-        // 5. Lưu Review vào CSDL và trả về kết quả
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<Guid>.Fail("Chưa triển khai logic CreateReview"));
+        var room = await db.Rooms.FindAsync(roomId);
+        if (room == null || room.Status != RoomStatus.AVAILABLE || room.ExpiresAt <= DateTime.UtcNow) return NotFound();
+        if (room.LandlordId == User.UserId()) return BadRequest(ApiResponse<object>.Fail("Bạn không thể đánh giá tin của mình."));
+        if (await db.Reviews.AnyAsync(r => r.RoomId == roomId && r.UserId == User.UserId())) return Conflict(ApiResponse<object>.Fail("Bạn đã đánh giá phòng này."));
+        var flag = filter.CheckProfanity(dto.Comment);
+        var review = new Review { RoomId = roomId, UserId = User.UserId(), Rating = dto.Rating, Comment = dto.Comment.Trim(), IsFlagged = flag.IsFlagged, FlagReason = flag.MatchedWord };
+        db.Reviews.Add(review);
+        try { await db.SaveChangesAsync(); } catch (DbUpdateException) { return Conflict(ApiResponse<object>.Fail("Bạn đã đánh giá phòng này.")); }
+        return Ok(ApiResponse<object>.Ok(new { review.Id }, flag.IsFlagged ? "Đánh giá đang chờ kiểm duyệt." : "Cảm ơn bạn đã chia sẻ trải nghiệm!"));
     }
 }

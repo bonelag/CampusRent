@@ -9,3 +9,10 @@ Nhánh thực hiện: `codex/complete-campusrent`. Mỗi mốc được kiểm t
 5. Kiểm thử xuyên suốt, migrations PostgreSQL, container production, CI và hướng dẫn triển khai.
 
 Các tài khoản mẫu chỉ được nạp ở Development. Production sử dụng PostgreSQL và secret do môi trường cung cấp.
+
+## Mốc 2
+- Hoàn thiện API tài khoản, tìm kiếm, tin đăng, ảnh Cloudinary, đánh giá, yêu thích, lịch hẹn và kiểm duyệt.
+- 33 unit/integration test đạt, dùng SQLite thật trong mỗi test để kiểm tra cả ràng buộc dữ liệu.
+- Bỏ các controller MVC mẫu; React là giao diện chính.
+- Email đuôi edu không tự coi là đã xác thực: cần xác minh quyền sở hữu email trước khi cấp huy hiệu trong production.
+

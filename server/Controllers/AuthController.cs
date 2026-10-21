@@ -1,66 +1,55 @@
 using CampusRent.Server.Data;
 using CampusRent.Server.DTOs.Auth;
 using CampusRent.Server.DTOs.Common;
+using CampusRent.Server.Models;
 using CampusRent.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
+[ApiController, Route("api/auth")]
+public class AuthController(CampusRentDbContext db, ITokenService tokens) : ControllerBase
 {
-    private readonly CampusRentDbContext _dbContext;
-    private readonly ITokenService _tokenService;
-
-    public AuthController(CampusRentDbContext dbContext, ITokenService tokenService)
+    [HttpPost("register"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> Register(RegisterRequestDto dto)
     {
-        _dbContext = dbContext;
-        _tokenService = tokenService;
+        if (dto.Role is not (Role.STUDENT or Role.LANDLORD)) return BadRequest(ApiResponse<object>.Fail("Vai trò đăng ký không hợp lệ."));
+        var email = dto.Email.Trim().ToLowerInvariant();
+        if (await db.Users.AnyAsync(u => u.Email == email)) return Conflict(ApiResponse<object>.Fail("Email đã được sử dụng."));
+        var user = new User { Email = email, Password = BCrypt.Net.BCrypt.HashPassword(dto.Password), FullName = dto.FullName.Trim(), PhoneNumber = dto.PhoneNumber, Role = dto.Role };
+        // An academic email address alone does not prove mailbox ownership.
+        user.IsEduVerified = false;
+        db.Users.Add(user);
+        try { await db.SaveChangesAsync(); }
+        catch (DbUpdateException) { return Conflict(ApiResponse<object>.Fail("Email đã được sử dụng.")); }
+        return Ok(ApiResponse<AuthResponseDto>.Ok(new() { Token = tokens.GenerateToken(user), User = Mapping.Profile(user) }));
     }
-
-    /// <summary>
-    /// Đăng ký tài khoản người dùng mới
-    /// </summary>
-    [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterRequestDto dto)
+    [HttpPost("login"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> Login(LoginRequestDto dto)
     {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Kiểm tra email đã tồn tại trong CSDL chưa
-        // 2. Kiểm tra nếu email có đuôi ".edu.vn" -> gán IsEduVerified = true
-        // 3. Hash mật khẩu bằng BCrypt
-        // 4. Lưu User mới vào CSDL
-        // 5. Sinh JWT token qua _tokenService và trả về AuthResponseDto
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<AuthResponseDto>.Fail("Chưa triển khai logic Register"));
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
+            return Unauthorized(ApiResponse<object>.Fail("Email hoặc mật khẩu không chính xác."));
+        return Ok(ApiResponse<AuthResponseDto>.Ok(new() { Token = tokens.GenerateToken(user), User = Mapping.Profile(user) }));
     }
-
-    /// <summary>
-    /// Đăng nhập tài khoản
-    /// </summary>
-    [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto dto)
+    [Authorize, HttpGet("me")]
+    public async Task<IActionResult> Me()
     {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Tìm User theo email trong CSDL
-        // 2. Xác thực mật khẩu bằng BCrypt.Verify
-        // 3. Tạo JWT token qua _tokenService và trả về thông tin đăng nhập
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<AuthResponseDto>.Fail("Chưa triển khai logic Login"));
+        var user = await db.Users.FindAsync(User.UserId());
+        return user == null ? Unauthorized() : Ok(ApiResponse<UserProfileDto>.Ok(Mapping.Profile(user)));
     }
-
-    /// <summary>
-    /// Lấy thông tin tài khoản hiện tại từ Token
-    /// </summary>
-    [Authorize]
-    [HttpGet("me")]
-    public async Task<ActionResult<ApiResponse<UserProfileDto>>> GetMe()
+    [Authorize, HttpPut("me")]
+    public async Task<IActionResult> Update(ProfileUpdate dto)
     {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Đọc UserId từ ClaimTypes.NameIdentifier trong User context
-        // 2. Tìm thông tin User trong CSDL và map sang UserProfileDto
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<UserProfileDto>.Fail("Chưa triển khai logic GetMe"));
+        var user = await db.Users.FindAsync(User.UserId());
+        if (user == null) return Unauthorized();
+        user.FullName = dto.FullName.Trim(); user.PhoneNumber = dto.PhoneNumber; user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(ApiResponse<UserProfileDto>.Ok(Mapping.Profile(user)));
     }
 }
+public record ProfileUpdate([System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(150)] string FullName, [System.ComponentModel.DataAnnotations.MaxLength(20)] string? PhoneNumber);
+
+

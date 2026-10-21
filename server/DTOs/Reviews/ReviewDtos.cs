@@ -8,7 +8,7 @@ public class CreateReviewDto
     [Range(1, 5)]
     public int Rating { get; set; }
 
-    [Required, MinLength(2)]
+    [Required, MinLength(2), MaxLength(3000)]
     public string Comment { get; set; } = string.Empty;
 }
 

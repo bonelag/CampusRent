@@ -8,13 +8,13 @@ public class RegisterRequestDto
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [Required, MinLength(6)]
+    [Required, MinLength(8), MaxLength(72)]
     public string Password { get; set; } = string.Empty;
 
-    [Required]
+    [Required, MaxLength(150)]
     public string FullName { get; set; } = string.Empty;
 
-    public string? PhoneNumber { get; set; }
+    [MaxLength(20)] public string? PhoneNumber { get; set; }
 
     public Role Role { get; set; } = Role.STUDENT;
 }

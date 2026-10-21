@@ -1,34 +1,21 @@
 using CampusRent.Server.Data;
 using CampusRent.Server.DTOs.Common;
 using CampusRent.Server.DTOs.Reports;
+using CampusRent.Server.Models;
+using CampusRent.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class ReportsController : ControllerBase
+[ApiController, Route("api/reports"), Authorize]
+public class ReportsController(CampusRentDbContext db) : ControllerBase
 {
-    private readonly CampusRentDbContext _dbContext;
-
-    public ReportsController(CampusRentDbContext dbContext)
+    [HttpPost] public async Task<IActionResult> Create(CreateReportDto dto)
     {
-        _dbContext = dbContext;
-    }
-
-    /// <summary>
-    /// Báo cáo bài đăng phòng trọ ảo hoặc đánh giá bôi nhọ vi phạm
-    /// </summary>
-    [HttpPost]
-    [Authorize]
-    public async Task<ActionResult<ApiResponse<Guid>>> CreateReport([FromBody] CreateReportDto dto)
-    {
-        // TODO: Thành viên nhóm triển khai:
-        // 1. Lấy ReporterId từ User context
-        // 2. Validate rằng có ít nhất một đối tượng bị báo cáo (RoomId hoặc ReviewId)
-        // 3. Tạo bản ghi Report với Status = PENDING và lưu vào CSDL
-        await Task.CompletedTask;
-        return StatusCode(StatusCodes.Status501NotImplemented, ApiResponse<Guid>.Fail("Chưa triển khai logic CreateReport"));
+        if (dto.RoomId.HasValue == dto.ReviewId.HasValue) return BadRequest(ApiResponse<object>.Fail("Chọn đúng một tin hoặc đánh giá cần báo cáo."));
+        if (dto.RoomId.HasValue && !await db.Rooms.AnyAsync(r => r.Id == dto.RoomId) || dto.ReviewId.HasValue && !await db.Reviews.AnyAsync(r => r.Id == dto.ReviewId)) return NotFound();
+        var report = new Report { ReporterId = User.UserId(), RoomId = dto.RoomId, ReviewId = dto.ReviewId, Reason = dto.Reason.Trim(), Description = dto.Description };
+        db.Reports.Add(report); await db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new { report.Id }, "Đã gửi báo cáo cho quản trị viên."));
     }
 }

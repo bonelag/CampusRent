@@ -1,32 +1,26 @@
+using CampusRent.Server.Data;
+using CampusRent.Server.Models;
+using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.BackgroundServices;
-
-/// <summary>
-/// Template BackgroundService: Tác vụ định kỳ tự động quét và ẩn tin phòng trọ quá hạn 30 ngày.
-/// </summary>
-public class AutoExpireRoomsWorker : BackgroundService
+public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpireRoomsWorker> logger) : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<AutoExpireRoomsWorker> _logger;
-
-    public AutoExpireRoomsWorker(IServiceProvider serviceProvider, ILogger<AutoExpireRoomsWorker> logger)
+    public static async Task<int> ExpireAsync(CampusRentDbContext db, CancellationToken token = default)
     {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
+        var now = DateTime.UtcNow;
+        var rooms = await db.Rooms.Where(r => r.Status == RoomStatus.AVAILABLE && r.ExpiresAt <= now).ToListAsync(token);
+        foreach (var room in rooms) { room.Status = RoomStatus.HIDDEN; room.UpdatedAt = now; }
+        await db.SaveChangesAsync(token);
+        return rooms.Count;
     }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("[AutoExpireRoomsWorker] BackgroundService template sẵn sàng.");
-
-        while (!stoppingToken.IsCancellationRequested)
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
+        try
         {
-            // TODO: Thành viên nhóm triển khai logic:
-            // 1. Tạo Scope từ _serviceProvider để lấy CampusRentDbContext
-            // 2. Truy vấn các phòng trọ có Status == RoomStatus.AVAILABLE và ExpiresAt < DateTime.UtcNow
-            // 3. Cập nhật Status = RoomStatus.HIDDEN và lưu xuống database
-            // 4. Bắt lỗi (try/catch) và log thông tin chi tiết
-
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+                try { using var scope = scopes.CreateScope(); await ExpireAsync(scope.ServiceProvider.GetRequiredService<CampusRentDbContext>(), stoppingToken); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Could not expire rooms"); }
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
     }
 }
