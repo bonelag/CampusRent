@@ -18,7 +18,8 @@ export async function api(path, options = {}) {
             ? JSON.stringify(options.body)
             : undefined,
     });
-  } catch {
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
     throw new Error('Không thể kết nối máy chủ. Vui lòng thử lại.');
   }
   if (response.status === 204) return null;

@@ -169,6 +169,18 @@ public class ApiTests : IDisposable
     [InlineData("/api/rooms?radius=3")]
     public async Task SearchRejectsInvalidFilters(string url) => Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync(url)).StatusCode);
 
+    [Fact] public async Task PlaceSuggestionsReturnKnownListingCoordinatesAndValidateInput()
+    {
+        await Room();
+        client.DefaultRequestHeaders.Authorization = null;
+        var suggestions = await Data(await client.GetAsync("/api/places/suggest?q=T%E1%BA%A1%20Quang"));
+        var suggestion = suggestions.EnumerateArray().Single();
+        Assert.Equal("listing", suggestion.GetProperty("source").GetString());
+        Assert.Equal(21.005, suggestion.GetProperty("latitude").GetDouble());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/places/suggest?q=x")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/places/suggest?q=" + new string('x', 121))).StatusCode);
+    }
+
     private async Task Admin()
     {
         var id = await Register("LANDLORD");

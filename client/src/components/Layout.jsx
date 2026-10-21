@@ -1,115 +1,12 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import {
-  House,
-  ArrowUpRight,
-  Heart,
-  CalendarDays,
-  Plus,
-  Menu,
-  X,
-  LogOut,
-  UserRound,
-  ShieldCheck,
-} from 'lucide-react';
+import { House, Compass, KeyRound, ShieldCheck, Heart, CalendarDays, Menu, X, LogOut, BadgeCheck, UserRound } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 export function Logo() {
-  return (
-    <Link className="brand" to="/" aria-label="CampusRent trang chủ">
-      <span className="brand-mark">
-        <House size={23} strokeWidth={2.5} />
-      </span>
-      <span>
-        campus<span className="brand-light">rent</span>
-        <span className="brand-dot">.</span>
-      </span>
-    </Link>
-  );
+ return <Link className="brand" to="/" aria-label="CampusRent trang chủ"><span className="brand-mark"><House size={20}/></span><span className="brand-wordmark">CampusRent<small>Hệ thống Trọ Sinh viên</small></span></Link>;
 }
 export default function Layout() {
-  const { user, logout, saved } = useApp();
-  const [open, setOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  return (
-    <>
-      <header className="header">
-        <div className="header-inner">
-          <Logo />
-          <nav
-            className={open ? 'navigation open' : 'navigation'}
-            aria-label="Điều hướng chính"
-            onClick={() => setOpen(false)}
-          >
-            <NavLink to="/" end>
-              Tìm phòng trọ
-            </NavLink>
-            <NavLink to="/saved">
-              <Heart size={16} /> Đã lưu{' '}
-              {saved.length > 0 && <span className="nav-count">{saved.length}</span>}
-            </NavLink>
-            <NavLink to="/bookings">
-              <CalendarDays size={16} /> Lịch hẹn của tôi
-            </NavLink>
-            {user?.role === 'ADMIN' && (
-              <NavLink to="/admin">
-                <ShieldCheck size={16} /> Quản trị
-              </NavLink>
-            )}
-          </nav>
-          <div className="header-actions">
-            <Link className="button outline small post-link" to="/post">
-              <Plus size={16} /> Đăng tin
-            </Link>
-            {user ? (
-              <>
-                <Link className="avatar" to="/account" title={user.fullName}>
-                  {user.fullName.charAt(0).toUpperCase()}
-                </Link>
-                <button
-                  className="icon-button logout-button"
-                  aria-label="Đăng xuất"
-                  onClick={() => {
-                    logout();
-                    navigate('/');
-                  }}
-                >
-                  <LogOut size={18} />
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/login"
-                state={{ from: location.pathname + location.search }}
-                className="button dark small"
-              >
-                Đăng nhập <ArrowUpRight size={15} />
-              </Link>
-            )}
-            <button
-              className="icon-button mobile-menu"
-              aria-label={open ? 'Đóng menu' : 'Mở menu'}
-              aria-expanded={open}
-              onClick={() => setOpen(!open)}
-            >
-              {open ? <X /> : <Menu />}
-            </button>
-          </div>
-        </div>
-      </header>
-      <main id="main-content">
-        <Outlet />
-      </main>
-      <footer className="footer">
-        <div>
-          <Logo />
-          <p>Một căn phòng tốt. Một khởi đầu mới.</p>
-        </div>
-        <div className="footer-right">
-          <span>Được xây dựng cho cuộc sống sinh viên</span>
-          <span>© {new Date().getFullYear()} CampusRent · Hà Nội, Việt Nam</span>
-        </div>
-      </footer>
-    </>
-  );
+ const {user,logout,saved}=useApp();const [open,setOpen]=useState(false);const navigate=useNavigate();const location=useLocation();
+ const authState={from:location.pathname+location.search,backgroundLocation:location};
+ return <><header className="header"><div className="header-inner"><Logo/><nav className="role-navigation" aria-label="Khu vực sử dụng"><NavLink to="/" end><Compass size={14}/><span>Người tìm trọ</span></NavLink><NavLink to="/my-rooms"><KeyRound size={14}/><span>Chủ nhà (Đăng tin)</span></NavLink><NavLink to="/admin"><ShieldCheck size={14}/><span>Quản trị viên</span></NavLink></nav><div className="header-actions">{user?<><Link className="user-identity" to="/account"><span className="avatar">{user.fullName.split(' ').at(-1).slice(0,2).toUpperCase()}</span><span className="user-meta"><strong>{user.fullName}</strong><small className={user.isEduVerified?'verified':''}>{user.isEduVerified?<BadgeCheck size={12}/>:user.role==='ADMIN'?<ShieldCheck size={12}/>:user.role==='LANDLORD'?<KeyRound size={12}/>:<UserRound size={12}/>} {user.isEduVerified?'Sinh viên đã xác thực':user.role==='ADMIN'?'Quản trị viên':user.role==='LANDLORD'?'Chủ phòng trọ':'Người tìm trọ'}</small></span></Link><button className="icon-button logout-button" aria-label="Đăng xuất" onClick={()=>{logout();navigate('/');}}><LogOut size={17}/></button></>:<><Link to="/login" state={authState} className="text-button login-link">Đăng nhập</Link><Link to="/register" state={authState} className="button primary small register-link">Đăng ký</Link></>}<button className="icon-button mobile-menu" aria-label={open?'Đóng menu':'Mở menu'} aria-expanded={open} onClick={()=>setOpen(!open)}>{open?<X size={20}/>:<Menu size={20}/>}</button></div></div><nav className={'utility-navigation '+(open?'open':'')} aria-label="Tiện ích tài khoản" onClick={()=>setOpen(false)}><NavLink to="/saved"><Heart size={14}/> Đã lưu {saved.length>0&&<span className="nav-count">{saved.length}</span>}</NavLink><NavLink to="/bookings"><CalendarDays size={14}/> Lịch hẹn của tôi</NavLink><Link to="/post"><KeyRound size={14}/> Đăng tin</Link>{user&&<Link to="/account"><UserRound size={14}/> Tài khoản</Link>}</nav></header><main id="main-content"><Outlet/></main><footer className="footer"><span>© {new Date().getFullYear()} CampusRent · Hệ thống Trọ Sinh viên</span><span>Thông tin minh bạch · Kết nối trực tiếp chủ trọ</span></footer></>;
 }

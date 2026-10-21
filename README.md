@@ -4,7 +4,7 @@ Nền tảng tìm phòng trọ sinh viên theo trường đại học. React 18 
 
 ## Chức năng
 
-- Tìm kiếm theo từ khóa, trường, giá, tiện ích, bán kính; sắp xếp và phân trang.
+- Tìm kiếm theo từ khóa, trường, giá, tiện ích, bán kính; sắp xếp và phân trang. Ô vị trí gợi ý tức thời, chọn gợi ý sẽ đặt tâm bản đồ và cập nhật các phòng ở gần đó.
 - Danh sách và bản đồ Leaflet; ảnh, thông tin chủ trọ, chi phí minh bạch.
 - Dự toán tiền thuê + điện + nước + Internet + dịch vụ theo mức sử dụng.
 - Đăng ký sinh viên/chủ trọ, đăng nhập JWT, cập nhật hồ sơ.

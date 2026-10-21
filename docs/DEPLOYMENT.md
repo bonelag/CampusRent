@@ -17,6 +17,8 @@ Service `migrate` áp dụng migrations một lần trước khi app khởi đ�
 
 Cloudinary là tùy chọn. Điền ba biến `CLOUDINARY_*` để upload ảnh từ máy. Khi chưa cấu hình, form vẫn nhận đường dẫn ảnh HTTPS. Ảnh được kiểm tra định dạng và giới hạn 5 MB. Ảnh demo sử dụng Unsplash; tile bản đồ lấy từ OpenStreetMap, font Google có font dự phòng. Với lưu lượng lớn, cấu hình dịch vụ tile phù hợp và chuyển ảnh demo sang storage của bạn.
 
+Để gợi ý mọi địa chỉ theo thời gian thực, đặt `GOOGLE_PLACES_API_KEY` trong `.env`, bật Places API (New) cho project Google Cloud và giới hạn khóa ở mức server. Khóa chỉ được dùng ở backend, được cache 10 phút và endpoint gợi ý giới hạn 30 yêu cầu/phút/IP. Khi chưa có khóa, ô tìm kiếm vẫn gợi ý trường và địa chỉ phòng đang có trong CampusRent.
+
 ## Migrations và database có sẵn
 
 - Nguồn schema hiện hành: `server/Migrations/`.

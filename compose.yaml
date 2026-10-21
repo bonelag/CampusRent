@@ -14,6 +14,7 @@ x-app: &app
     Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
     Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
     Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
+    GooglePlaces__ApiKey: ${GOOGLE_PLACES_API_KEY:-}
 
 services:
   db:

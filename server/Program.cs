@@ -56,12 +56,22 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    o.AddPolicy("places", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IGooglePlacesClient, GooglePlacesClient>(client =>
+{
+    client.BaseAddress = new Uri("https://places.googleapis.com/v1/");
+    client.Timeout = TimeSpan.FromSeconds(5);
 });
 builder.Services.AddSingleton<IHaversineService, HaversineService>();
 builder.Services.AddSingleton<ILivingCostService, LivingCostService>();
 builder.Services.AddSingleton<IProfanityFilterService, ProfanityFilterService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IPlaceSearchService, PlaceSearchService>();
 builder.Services.AddHostedService<AutoExpireRoomsWorker>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -27,6 +27,22 @@ test('tìm phòng, lọc và xem chi phí thực tế', async ({ page }) => {
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
   ).toBeTruthy();
 });
+test('gợi ý vị trí thời gian thực đặt tâm tìm kiếm trên bản đồ', async ({ page }) => {
+  await page.route('**/api/places/suggest?*', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [{ id: 'listing:103', title: 'Tòa nhà 103 Tạ Quang Bửu', subtitle: 'Hai Bà Trưng, Hà Nội', latitude: 21.005, longitude: 105.843, source: 'listing' }] }),
+    });
+  });
+  await page.goto('/');
+  const location = page.getByLabel('Tìm vị trí hoặc trường đại học');
+  await location.fill('103 Tạ Quang Bửu');
+  await expect(page.getByRole('option', { name: /Tòa nhà 103 Tạ Quang Bửu/ })).toBeVisible();
+  await page.getByRole('option', { name: /Tòa nhà 103 Tạ Quang Bửu/ }).click();
+  await expect(location).toHaveValue('Tòa nhà 103 Tạ Quang Bửu');
+  await expect(page).toHaveURL(/centerLat=21\.005000/);
+  await expect(page.locator('.map-panel-heading')).toContainText('Tòa nhà 103 Tạ Quang Bửu');
+});
 test('đăng nhập, lưu phòng và giữ phiên sau khi tải lại', async ({ page }) => {
   await login(page);
   await page.goto('/');

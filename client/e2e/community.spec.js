@@ -40,12 +40,8 @@ test('sinh viên đăng ký, đặt lịch, đánh giá, báo cáo và cập nh�
 });
 test('lọc trường và khoảng cách, có trạng thái rỗng dễ phục hồi', async ({ page, isMobile }) => {
   await page.goto('/');
-  await page
-    .getByLabel('Trường đại học', { exact: true })
-    .selectOption({ label: 'Đại học Bách Khoa Hà Nội' });
-  if (isMobile) await page.getByRole('button', { name: 'Bộ lọc', exact: true }).click();
+  await page.getByRole('button', { name: 'BKHN', exact: true }).click();
   await page.getByRole('button', { name: '1 km', exact: true }).click();
-  if (isMobile) await page.getByRole('button', { name: 'Đóng bộ lọc', exact: true }).click();
   await expect(page.locator('.room-card').first()).toBeVisible();
   await expect
     .poll(async () => {
@@ -58,6 +54,6 @@ test('lọc trường và khoảng cách, có trạng thái rỗng dễ phục h
   await page.getByLabel('Từ khóa tìm phòng').fill('Từ khóa chắc chắn không tồn tại xyz');
   await page.getByRole('button', { name: 'Tìm phòng ngay' }).click();
   await expect(page.getByRole('heading', { name: 'Chưa tìm thấy phòng phù hợp' })).toBeVisible();
-  await page.getByRole('button', { name: 'Xóa bộ lọc', exact: true }).click();
+  await page.getByRole('button', { name: 'Xóa bộ lọc', exact: true }).click({ force: isMobile });
   await expect(page.locator('.room-card').first()).toBeVisible();
 });
