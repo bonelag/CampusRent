@@ -77,7 +77,7 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
         var r = await Loaded.SingleOrDefaultAsync(r => r.Id == id);
         if (r == null) return NotFound(); if (!CanManage(r)) return Forbid();
         var error = await Validate(dto); if (error != null) return BadRequest(ApiResponse<object>.Fail(error));
-        db.RoomImages.RemoveRange(r.Images); Apply(r, dto); r.UpdatedAt = DateTime.UtcNow;
+        db.RoomImages.RemoveRange(r.Images); Apply(r, dto); db.RoomImages.AddRange(r.Images); r.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(); return Ok(ApiResponse<object>.Ok(new { r.Id }));
     }
     [HttpPatch("{id:guid}/status"), Authorize(Roles = "LANDLORD,ADMIN")]

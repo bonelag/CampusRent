@@ -83,6 +83,13 @@ public class ApiTests : IDisposable
         Assert.Equal(3774000, estimate.GetProperty("totalEstimatedMonthlyCost").GetDecimal());
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/rooms/{id}/cost-estimate?expectedKwh=-1")).StatusCode);
     }
+    [Fact] public async Task OwnerCanUpdateRoomAndReplaceImages()
+    {
+        var id = await Room();
+        await Data(await client.PutAsJsonAsync($"/api/rooms/{id}", RoomPayload()));
+        var detail = await Data(await client.GetAsync($"/api/rooms/{id}"));
+        Assert.Single(detail.GetProperty("images").EnumerateArray());
+    }
     [Fact] public async Task OtherLandlordCannotEditArchiveOrChangeStatus()
     {
         var id = await Room(); await Register("LANDLORD");

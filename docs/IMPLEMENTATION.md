@@ -22,3 +22,9 @@ Các tài khoản mẫu chỉ được nạp ở Development. Production sử d�
 - 10 test frontend đạt; build production đạt; kiểm tra ảnh desktop 1440px và mobile 390px, không tràn ngang hay lỗi JavaScript.
 - Dùng CSS riêng để thống nhất nhận diện; bỏ Tailwind không còn dùng. Cập nhật React Router và công cụ test, npm audit hiện không có lỗ hổng.
 
+
+## Mốc 4
+- Hoàn thiện đăng ký/đăng nhập, hồ sơ, yêu thích, lịch hẹn, đăng/sửa/quản lý tin và trang quản trị.
+- 15 test frontend, 34 test backend và 12 E2E desktop/mobile đạt.
+- E2E tìm được lỗi cập nhật ảnh của EF; đã sửa và bổ sung test hồi quy.
+
