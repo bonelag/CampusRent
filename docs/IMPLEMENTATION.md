@@ -16,3 +16,9 @@ Các tài khoản mẫu chỉ được nạp ở Development. Production sử d�
 - Bỏ các controller MVC mẫu; React là giao diện chính.
 - Email đuôi edu không tự coi là đã xác thực: cần xác minh quyền sở hữu email trước khi cấp huy hiệu trong production.
 
+
+## Mốc 3
+- Giao diện tìm phòng, bộ lọc URL, Leaflet, chi tiết, dự toán chi phí và modal đặt lịch/đánh giá/báo cáo.
+- 10 test frontend đạt; build production đạt; kiểm tra ảnh desktop 1440px và mobile 390px, không tràn ngang hay lỗi JavaScript.
+- Dùng CSS riêng để thống nhất nhận diện; bỏ Tailwind không còn dùng. Cập nhật React Router và công cụ test, npm audit hiện không có lỗ hổng.
+
