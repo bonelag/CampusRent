@@ -90,15 +90,20 @@ export default function AdminPage() {
     }
   }
   return (
-    <div className="container page-shell">
+    <div className="container page-shell dashboard-page admin-dashboard">
       <PageTitle
-        eyebrow="CÙNG XÂY DỰNG MỘT CỘNG ĐỒNG TỐT HƠN"
+        eyebrow="QUẢN TRỊ HỆ THỐNG"
         title="Tổng quan quản trị."
-        text="Theo dõi nền tảng, kiểm tra báo cáo và duyệt nội dung cộng đồng."
+        text="Kiểm duyệt báo cáo vi phạm, quản lý nội dung cộng đồng và chống tin ảo."
       >
-        <button className="button outline small" onClick={() => setShowUniversity(true)}>
-          <GraduationCap size={16} /> Thêm trường
-        </button>
+        <div className="admin-heading-actions">
+          <span className="admin-access-badge">
+            <ShieldCheck size={14} /> Admin Role: Full Access
+          </span>
+          <button className="button outline small" onClick={() => setShowUniversity(true)}>
+            <GraduationCap size={16} /> Thêm trường
+          </button>
+        </div>
       </PageTitle>
       {error ? (
         <ErrorState message={error} retry={load} />
@@ -106,106 +111,115 @@ export default function AdminPage() {
         <Loading />
       ) : (
         <>
-          <div className="stats-grid">
+          <div className="stats-grid admin-kpis">
             {[
-              ['users', 'Người dùng', UsersRound],
-              ['rooms', 'Tin phòng trọ', House],
-              ['availableRooms', 'Phòng đang hiển thị', Check],
-              ['pendingReports', 'Báo cáo cần xử lý', Flag],
-              ['flaggedReviews', 'Đánh giá chờ duyệt', Star],
-              ['bookings', 'Lịch xem phòng', CalendarDays],
-            ].map(([key, label, Icon]) => (
-              <div className="stat-card" key={key}>
-                <Icon size={21} />
-                <strong>{data.stats[key]}</strong>
+              ['users', 'Người dùng', 'Toàn hệ thống', UsersRound],
+              ['rooms', 'Tổng bài đăng', 'Toàn hệ thống', House],
+              ['availableRooms', 'Phòng đang hiển thị', 'Sinh viên có thể tìm thấy', Check],
+              ['pendingReports', 'Báo cáo vi phạm', 'Cần xem xét và xử lý', Flag],
+              ['flaggedReviews', 'Đánh giá chờ duyệt', 'Nội dung bị gắn cờ', Star],
+              ['bookings', 'Lịch xem phòng', 'Tổng lượt đặt lịch', CalendarDays],
+            ].map(([key, label, description, Icon]) => (
+              <article className={'stat-card stat-' + key} key={key}>
                 <span>{label}</span>
-              </div>
+                <strong>{data.stats[key]}</strong>
+                <small>{description}</small>
+                <Icon size={20} />
+              </article>
             ))}
           </div>
-          <div className="tabs" role="group" aria-label="Nội dung kiểm duyệt">
-            <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>
-              Báo cáo vi phạm <span>{data.stats.pendingReports}</span>
-            </button>
-            <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
-              Đánh giá chờ duyệt <span>{data.stats.flaggedReviews}</span>
-            </button>
-          </div>
-          {tab === 'reports' ? (
-            data.reports.length ? (
+          <section className="dashboard-panel moderation-panel">
+            <div className="tabs" role="group" aria-label="Nội dung kiểm duyệt">
+              <button
+                className={tab === 'reports' ? 'active' : ''}
+                onClick={() => setTab('reports')}
+              >
+                Báo cáo vi phạm <span>{data.stats.pendingReports}</span>
+              </button>
+              <button
+                className={tab === 'reviews' ? 'active' : ''}
+                onClick={() => setTab('reviews')}
+              >
+                Đánh giá chờ duyệt <span>{data.stats.flaggedReviews}</span>
+              </button>
+            </div>
+            {tab === 'reports' ? (
+              data.reports.length ? (
+                <div className="moderation-list">
+                  {data.reports.map((r) => (
+                    <article className="moderation-item" key={r.id}>
+                      <div>
+                        <span
+                          className={
+                            'status-pill ' + (r.status === 'PENDING' ? 'pending' : 'confirmed')
+                          }
+                        >
+                          {r.status === 'PENDING'
+                            ? 'Chờ xử lý'
+                            : r.status === 'RESOLVED'
+                              ? 'Đã xử lý'
+                              : 'Đã bỏ qua'}
+                        </span>
+                        <h3>{r.reason}</h3>
+                        <p>{r.roomTitle || r.reviewComment}</p>
+                        {r.description && <p className="muted">{r.description}</p>}
+                        <small>
+                          Gửi bởi {r.reporterName} · {new Date(r.createdAt).toLocaleString('vi-VN')}
+                        </small>
+                      </div>
+                      {r.status === 'PENDING' && (
+                        <div className="moderation-actions">
+                          <button
+                            className="button primary small"
+                            disabled={busy === r.id}
+                            onClick={() => setTarget(r)}
+                          >
+                            Xử lý báo cáo
+                          </button>
+                          <button
+                            className="button outline small"
+                            disabled={busy === r.id}
+                            onClick={() => resolve(r.id, 'DISMISSED')}
+                          >
+                            Bỏ qua
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  title="Cộng đồng đang yên tâm"
+                  text="Chưa có báo cáo vi phạm nào được gửi đến."
+                />
+              )
+            ) : data.reviews.length ? (
               <div className="moderation-list">
-                {data.reports.map((r) => (
+                {data.reviews.map((r) => (
                   <article className="moderation-item" key={r.id}>
                     <div>
-                      <span
-                        className={
-                          'status-pill ' + (r.status === 'PENDING' ? 'pending' : 'confirmed')
-                        }
-                      >
-                        {r.status === 'PENDING'
-                          ? 'Chờ xử lý'
-                          : r.status === 'RESOLVED'
-                            ? 'Đã xử lý'
-                            : 'Đã bỏ qua'}
-                      </span>
-                      <h3>{r.reason}</h3>
-                      <p>{r.roomTitle || r.reviewComment}</p>
-                      {r.description && <p className="muted">{r.description}</p>}
+                      <span className="status-pill pending">Cần kiểm duyệt</span>
+                      <h3>{r.roomTitle}</h3>
+                      <p>“{r.comment}”</p>
                       <small>
-                        Gửi bởi {r.reporterName} · {new Date(r.createdAt).toLocaleString('vi-VN')}
+                        {r.userName} · {r.rating} sao · Từ khóa: {r.flagReason}
                       </small>
                     </div>
-                    {r.status === 'PENDING' && (
-                      <div className="moderation-actions">
-                        <button
-                          className="button primary small"
-                          disabled={busy === r.id}
-                          onClick={() => setTarget(r)}
-                        >
-                          Xử lý báo cáo
-                        </button>
-                        <button
-                          className="button outline small"
-                          disabled={busy === r.id}
-                          onClick={() => resolve(r.id, 'DISMISSED')}
-                        >
-                          Bỏ qua
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      className="button primary small"
+                      disabled={busy === r.id}
+                      onClick={() => approve(r.id)}
+                    >
+                      <Check size={14} /> Cho phép hiển thị
+                    </button>
                   </article>
                 ))}
               </div>
             ) : (
-              <Empty
-                title="Cộng đồng đang yên tâm"
-                text="Chưa có báo cáo vi phạm nào được gửi đến."
-              />
-            )
-          ) : data.reviews.length ? (
-            <div className="moderation-list">
-              {data.reviews.map((r) => (
-                <article className="moderation-item" key={r.id}>
-                  <div>
-                    <span className="status-pill pending">Cần kiểm duyệt</span>
-                    <h3>{r.roomTitle}</h3>
-                    <p>“{r.comment}”</p>
-                    <small>
-                      {r.userName} · {r.rating} sao · Từ khóa: {r.flagReason}
-                    </small>
-                  </div>
-                  <button
-                    className="button primary small"
-                    disabled={busy === r.id}
-                    onClick={() => approve(r.id)}
-                  >
-                    <Check size={14} /> Cho phép hiển thị
-                  </button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <Empty title="Đã kiểm duyệt xong" text="Chưa có đánh giá nào đang chờ duyệt." />
-          )}
+              <Empty title="Đã kiểm duyệt xong" text="Chưa có đánh giá nào đang chờ duyệt." />
+            )}
+          </section>
         </>
       )}
       {target && (
