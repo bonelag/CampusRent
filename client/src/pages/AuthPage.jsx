@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import {
-  ArrowRight,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  GraduationCap,
-  House,
-} from 'lucide-react';
+import { ArrowRight, ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 export default function AuthPage({ register = false }) {
   const { user, authenticate, notify } = useApp(),
@@ -16,8 +8,7 @@ export default function AuthPage({ register = false }) {
     location = useLocation();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [showPassword, setShowPassword] = useState(false),
-    [role, setRole] = useState('STUDENT');
+    [showPassword, setShowPassword] = useState(false);
   const destination = location.state?.from;
   const from =
     typeof destination === 'string' &&
@@ -38,7 +29,11 @@ export default function AuthPage({ register = false }) {
         email: data.get('email'),
         password: data.get('password'),
         ...(register
-          ? { fullName: data.get('fullName'), phoneNumber: data.get('phoneNumber'), role }
+          ? {
+              fullName: data.get('fullName'),
+              phoneNumber: data.get('phoneNumber'),
+              role: 'STUDENT',
+            }
           : {}),
       });
       notify(register ? 'Chào mừng bạn đến với CampusRent!' : 'Chào mừng bạn trở lại!');
@@ -88,28 +83,6 @@ export default function AuthPage({ register = false }) {
         <form className="form" onSubmit={submit}>
           {register && (
             <>
-              <div className="role-picker">
-                <button
-                  type="button"
-                  className={role === 'STUDENT' ? 'selected' : ''}
-                  onClick={() => setRole('STUDENT')}
-                  aria-pressed={role === 'STUDENT'}
-                >
-                  <GraduationCap size={21} />
-                  <strong>Sinh viên</strong>
-                  <span>Mình đang tìm phòng</span>
-                </button>
-                <button
-                  type="button"
-                  className={role === 'LANDLORD' ? 'selected' : ''}
-                  onClick={() => setRole('LANDLORD')}
-                  aria-pressed={role === 'LANDLORD'}
-                >
-                  <House size={21} />
-                  <strong>Chủ trọ</strong>
-                  <span>Mình có phòng cho thuê</span>
-                </button>
-              </div>
               <label>
                 Họ và tên
                 <input

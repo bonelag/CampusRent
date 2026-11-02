@@ -48,4 +48,5 @@ public class User
     public ICollection<Room> Rooms { get; set; } = new List<Room>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<Report> Reports { get; set; } = new List<Report>();
+    public ICollection<LandlordRequest> LandlordRequests { get; set; } = new List<LandlordRequest>();
 }

@@ -17,6 +17,7 @@ public class CampusRentDbContext : DbContext
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
+    public DbSet<LandlordRequest> LandlordRequests => Set<LandlordRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +96,25 @@ public class CampusRentDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.Property(rp => rp.Status).HasConversion<string>();
+        });
+
+        // LandlordRequest relations & constraints
+        modelBuilder.Entity<LandlordRequest>(entity =>
+        {
+            entity.HasOne(lr => lr.User)
+                  .WithMany(u => u.LandlordRequests)
+                  .HasForeignKey(lr => lr.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(lr => lr.Status).HasConversion<string>();
+            entity.Property(lr => lr.ImageUrls).HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)!)
+                .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<string>>(
+                    (a, b) => a!.SequenceEqual(b!), v => v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())), v => v.ToList()));
+
+            entity.HasIndex(lr => lr.UserId);
+            entity.HasIndex(lr => lr.Status);
         });
     }
 }

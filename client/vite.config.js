@@ -4,7 +4,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: { '/api': 'http://localhost:5059', '/health': 'http://localhost:5059' },
+    proxy: {
+      '/api': 'http://localhost:5059',
+      '/health': 'http://localhost:5059',
+      '/uploads': 'http://localhost:5059',
+    },
   },
   build: {
     rollupOptions: {

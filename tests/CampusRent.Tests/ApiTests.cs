@@ -300,4 +300,82 @@ public class ApiTests : IDisposable
         content.Add(new ByteArrayContent(new byte[]{137,80,78,71,13,10,26,10,0,0,0,0}),"file","image.png");
         Assert.Equal(HttpStatusCode.ServiceUnavailable,(await client.PostAsync("/api/images",content)).StatusCode);
     }
+    [Fact] public async Task StudentCanSubmitLandlordUpgradeRequestAndAdminCanApprove()
+    {
+        var studentId = await Register("STUDENT");
+        var reqPayload = new
+        {
+            title = "Đăng ký làm chủ trọ khu vực Bách Khoa",
+            reason = "Tôi có dãy 5 phòng trọ cho sinh viên thuê tại Tạ Quang Bửu, cần đăng tin.",
+            imageUrls = new[] { "https://example.com/room1.jpg" },
+            pdfUrl = "/uploads/documents/giay_to_nha_dat.pdf",
+            pdfFileName = "giay_to_nha_dat.pdf"
+        };
+        var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", reqPayload));
+        var reqId = created.GetProperty("id").GetGuid();
+        Assert.Equal("PENDING", created.GetProperty("status").GetString());
+        Assert.Equal("Đăng ký làm chủ trọ khu vực Bách Khoa", created.GetProperty("title").GetString());
+
+        // Duplicate pending request is rejected
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/landlord-requests", reqPayload)).StatusCode);
+
+        // Student can view their requests
+        var myRequests = await Data(await client.GetAsync("/api/landlord-requests/my"));
+        Assert.Single(myRequests.EnumerateArray());
+
+        // Admin views and approves
+        await Admin();
+        var adminList = await Data(await client.GetAsync("/api/admin/landlord-requests"));
+        Assert.Contains(adminList.EnumerateArray(), r => r.GetProperty("id").GetGuid() == reqId);
+
+        var approveRes = await client.PatchAsync($"/api/admin/landlord-requests/{reqId}/approve", null);
+        Assert.True(approveRes.IsSuccessStatusCode);
+
+        // Verify user role is now LANDLORD
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+        var user = await db.Users.FindAsync(studentId);
+        Assert.Equal(Role.LANDLORD, user!.Role);
+    }
+    [Fact] public async Task AdminCanRejectLandlordUpgradeRequest()
+    {
+        await Register("STUDENT");
+        var reqPayload = new { title = "Yêu cầu nâng cấp", reason = "Muốn cho thuê phòng", imageUrls = new string[0] };
+        var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", reqPayload));
+        var reqId = created.GetProperty("id").GetGuid();
+
+        await Admin();
+        var rejectRes = await client.PatchAsJsonAsync($"/api/admin/landlord-requests/{reqId}/reject", new { adminNote = "Chưa đủ giấy tờ chứng minh" });
+        Assert.True(rejectRes.IsSuccessStatusCode);
+
+        var adminList = await Data(await client.GetAsync("/api/admin/landlord-requests"));
+        var req = adminList.EnumerateArray().First(r => r.GetProperty("id").GetGuid() == reqId);
+        Assert.Equal("REJECTED", req.GetProperty("status").GetString());
+    }
+    [Fact] public async Task UploadPdfRejectsNonPdfFiles()
+    {
+        await Register("STUDENT");
+        using var content = new MultipartFormDataContent();
+        content.Add(new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("not a pdf")), "file", "test.txt");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/uploads/pdf", content)).StatusCode);
+    }
+    [Fact] public async Task AdminCanListAndManageUsers()
+    {
+        var studentId = await Register("STUDENT", "update-target@example.com");
+        await Admin();
+        var users = await Data(await client.GetAsync("/api/admin/users"));
+        Assert.NotEmpty(users.EnumerateArray());
+
+        var updatePayload = new
+        {
+            fullName = "Người Dùng Mới",
+            phoneNumber = "0987654321",
+            role = "LANDLORD",
+            isEduVerified = true
+        };
+        var updated = await Data(await client.PutAsJsonAsync($"/api/admin/users/{studentId}", updatePayload));
+        Assert.Equal("Người Dùng Mới", updated.GetProperty("fullName").GetString());
+        Assert.Equal("LANDLORD", updated.GetProperty("role").GetString());
+        Assert.True(updated.GetProperty("isEduVerified").GetBoolean());
+    }
 }

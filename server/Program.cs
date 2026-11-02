@@ -99,6 +99,13 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl =
         context.Context.Request.Path.StartsWithSegments("/assets") ? "public,max-age=31536000,immutable" : "no-cache"
 });
+var uploadsDir = Path.Combine(builder.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+    RequestPath = "/uploads"
+});
 app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();
@@ -115,7 +122,28 @@ using (var scope = app.Services.CreateScope())
     if (development)
     {
         if (db.Database.IsNpgsql()) await db.Database.MigrateAsync();
-        else await db.Database.EnsureCreatedAsync();
+        else
+        {
+            await db.Database.EnsureCreatedAsync();
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""landlord_requests"" (
+                    ""id"" TEXT NOT NULL CONSTRAINT ""PK_landlord_requests"" PRIMARY KEY,
+                    ""user_id"" TEXT NOT NULL,
+                    ""title"" TEXT NOT NULL,
+                    ""reason"" TEXT NOT NULL,
+                    ""image_urls"" TEXT NOT NULL,
+                    ""pdf_url"" TEXT NULL,
+                    ""pdf_file_name"" TEXT NULL,
+                    ""status"" TEXT NOT NULL,
+                    ""admin_note"" TEXT NULL,
+                    ""created_at"" TEXT NOT NULL,
+                    ""updated_at"" TEXT NOT NULL,
+                    CONSTRAINT ""FK_landlord_requests_users_user_id"" FOREIGN KEY (""user_id"") REFERENCES ""users"" (""id"") ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS ""IX_landlord_requests_status"" ON ""landlord_requests"" (""status"");
+                CREATE INDEX IF NOT EXISTS ""IX_landlord_requests_user_id"" ON ""landlord_requests"" (""user_id"");
+            ");
+        }
     }
     if (args.Contains("--migrate"))
     {

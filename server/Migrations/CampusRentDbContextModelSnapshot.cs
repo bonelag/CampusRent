@@ -76,6 +76,68 @@ namespace CampusRent.Server.Migrations
                     b.ToTable("Favorites");
                 });
 
+            modelBuilder.Entity("CampusRent.Server.Models.LandlordRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdminNote")
+                        .HasColumnType("text")
+                        .HasColumnName("admin_note");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ImageUrls")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("image_urls");
+
+                    b.Property<string>("PdfFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pdf_file_name");
+
+                    b.Property<string>("PdfUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("pdf_url");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("landlord_requests");
+                });
+
             modelBuilder.Entity("CampusRent.Server.Models.Report", b =>
                 {
                     b.Property<Guid>("Id")
@@ -455,6 +517,17 @@ namespace CampusRent.Server.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CampusRent.Server.Models.LandlordRequest", b =>
+                {
+                    b.HasOne("CampusRent.Server.Models.User", "User")
+                        .WithMany("LandlordRequests")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CampusRent.Server.Models.Report", b =>
                 {
                     b.HasOne("CampusRent.Server.Models.User", "Reporter")
@@ -549,6 +622,8 @@ namespace CampusRent.Server.Migrations
 
             modelBuilder.Entity("CampusRent.Server.Models.User", b =>
                 {
+                    b.Navigation("LandlordRequests");
+
                     b.Navigation("Reports");
 
                     b.Navigation("Reviews");
