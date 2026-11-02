@@ -24,13 +24,25 @@ public class PostgresTests
     public async Task MigrationsAreRepeatableAndRentalWorkflowPersistsInPostgres()
     {
         var connection = Environment.GetEnvironmentVariable("CAMPUSRENT_TEST_POSTGRES")!;
-        var schema = "campusrent_test_" + Guid.NewGuid().ToString("N");
-        await using var admin = new NpgsqlConnection(connection);
-        await admin.OpenAsync();
+
+// PostgreSQL trong GitHub Actions là database kiểm thử nội bộ, không sử dụng SSL.
+var testConnection = new NpgsqlConnectionStringBuilder(connection)
+{
+    SslMode = SslMode.Disable
+};
+
+var schema = "campusrent_test_" + Guid.NewGuid().ToString("N");
+
+// Sử dụng kết nối không SSL cho database kiểm thử.
+await using var admin = new NpgsqlConnection(testConnection.ConnectionString);
+await admin.OpenAsync();
         await using (var create = new NpgsqlCommand($"CREATE SCHEMA \"{schema}\"", admin)) await create.ExecuteNonQueryAsync();
         try
         {
-            var options = new NpgsqlConnectionStringBuilder(connection) { SearchPath = schema };
+            var options = new NpgsqlConnectionStringBuilder(testConnection.ConnectionString)
+{
+    SearchPath = schema
+};
             using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Testing").ConfigureAppConfiguration((_, cfg) => cfg.AddInMemoryCollection(new Dictionary<string,string?> { ["Database:Provider"]="Postgres",["ConnectionStrings:DefaultConnection"]=options.ToString() })));
             using var client = factory.CreateClient();
             using (var scope = factory.Services.CreateScope())
