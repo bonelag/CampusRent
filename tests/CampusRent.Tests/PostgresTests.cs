@@ -36,9 +36,23 @@ public class PostgresTests
             using (var scope = factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
-                Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+
+                // Lấy danh sách Migration chưa được áp dụng.
+                var pendingBefore = (await db.Database.GetPendingMigrationsAsync()).ToArray();
+
+                // Kiểm tra có Migration cần chạy.
+                Assert.NotEmpty(pendingBefore);
+
+                // Chạy Migration.
                 await db.Database.MigrateAsync();
+
+                // Kiểm tra không còn Migration chưa được áp dụng.
+                Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+
+                // Thêm dữ liệu mẫu.
                 await DbSeeder.SeedReferenceAsync(db);
+
+                // Kiểm tra số trường đại học.
                 Assert.Equal(5, await db.Universities.CountAsync());
             }
             var registered = await client.PostAsJsonAsync("/api/auth/register", new {email="owner@example.com",password="TestPassword123!",fullName="Owner",role="LANDLORD"});
