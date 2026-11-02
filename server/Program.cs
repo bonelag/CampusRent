@@ -110,18 +110,30 @@ app.MapGet("/health", async (CampusRentDbContext db) =>
 app.Map("/api/{**path}", () => Results.NotFound(ApiResponse<object>.Fail("API không tồn tại.")));
 app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope())
+using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+
     if (development)
     {
-        if (db.Database.IsNpgsql()) await db.Database.MigrateAsync();
-        else await db.Database.EnsureCreatedAsync();
+        if (db.Database.IsNpgsql())
+        {
+            // Không tự chạy Migration trong môi trường Testing.
+            // Bài PostgresTests sẽ tự quản lý Migration.
+            if (!builder.Environment.IsEnvironment("Testing"))
+            {
+                await db.Database.MigrateAsync();
+            }
+        }
+        else
+        {
+            // SQLite vẫn cần tạo bảng cho các bài ApiTests.
+            await db.Database.EnsureCreatedAsync();
+        }
     }
-    if (args.Contains("--migrate"))
-    {
-        await db.Database.MigrateAsync();
-        return;
-    }
+
+    // Giữ nguyên các đoạn code còn lại bên dưới.
+}
     if (builder.Environment.IsDevelopment()) await DbSeeder.SeedAsync(db);
     if (!development) await DbSeeder.SeedReferenceAsync(db);
     var adminEmail = builder.Configuration["Admin:Email"];
