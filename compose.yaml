@@ -1,56 +1,34 @@
-x-app: &app
-  image: campusrent:local
-  build: .
-  environment: &environment
-    ASPNETCORE_ENVIRONMENT: Production
-    Database__Provider: Postgres
-    ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=campusrent;Username=campusrent;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
-    Jwt__Issuer: CampusRent
-    Jwt__Audience: CampusRentApp
-    ClientUrl: ${CLIENT_URL:-http://localhost:8080}
-    Admin__Email: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env}
-    Admin__Password: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
-    Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
-    Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
-    Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
-    GooglePlaces__ApiKey: ${GOOGLE_PLACES_API_KEY:-}
-
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: campusrent
-      POSTGRES_USER: campusrent
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U campusrent -d campusrent"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-  migrate:
-    <<: *app
-    command: ["--migrate"]
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-  app:
-    <<: *app
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: campusrent:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${APP_PORT:-8080}:8080"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Provider: Postgres
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=aws-0-ap-south-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.auqnfzpqeabvgplkfaxa;Password=U4ipQKxlAGIxxr9d;SSL Mode=Require;Trust Server Certificate=true;}
+      Jwt__Secret: ${JWT_SECRET:-CampusRent_Production_Secret_Key_2026_Secure_JWT_Token_At_Least_32_Chars}
+      Jwt__Issuer: CampusRent
+      Jwt__Audience: CampusRentApp
+      ClientUrl: ${CLIENT_URL:-http://localhost:8080}
+      Admin__Email: ${ADMIN_EMAIL:-admin@campusrent.vn}
+      Admin__Password: ${ADMIN_PASSWORD:-Password@123456}
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
+      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
+      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
+      GooglePlaces__ApiKey: ${GOOGLE_PLACES_API_KEY:-}
+    volumes:
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "dotnet", "CampusRent.Server.dll", "--healthcheck"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
       retries: 3
+
 volumes:
-  postgres_data:
+  uploads_data:
