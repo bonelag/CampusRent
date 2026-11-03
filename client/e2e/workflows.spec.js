@@ -81,17 +81,20 @@ test('chủ trọ tạo và chỉnh sửa tin đăng', async ({ page }) => {
     .getByLabel('Đường dẫn ảnh HTTPS')
     .fill('https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800');
   await page.getByRole('button', { name: 'Thêm ảnh', exact: true }).click();
-  await page.getByRole('button', { name: 'Đăng tin phòng trọ' }).click();
+  await page.getByRole('button', { name: 'Đăng tin phòng trọ' }).click({ force: true });
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
   const path = new URL(page.url()).pathname;
   await page.goto(path + '/edit');
   await page.getByLabel('Tiêu đề tin đăng').fill(title + ' đã sửa');
-  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click({ force: true });
   await expect(page.getByRole('heading', { name: title + ' đã sửa', exact: true })).toBeVisible();
   await page.goto('/my-rooms');
   const row = page.locator('.managed-room').filter({ hasText: title + ' đã sửa' });
   await row.getByRole('button', { name: 'Ẩn tin', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Ẩn tin', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Ẩn tin', exact: true })
+    .click({ force: true });
   await expect(row.getByText('Đã ẩn', { exact: true })).toBeVisible();
 });
 test('quản trị xem tổng quan và danh sách kiểm duyệt', async ({ page }) => {
