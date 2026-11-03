@@ -1,8 +1,8 @@
 
+using System.Collections.Generic;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Collections.Generic;
 
 using CampusRent.Server.Data;
 
@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Npgsql;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace CampusRent.Tests;
 
@@ -31,23 +32,30 @@ public class PostgresFactAttribute : FactAttribute
 
 public class PostgresTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public PostgresTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     [PostgresFact]
     public async Task MigrationsAreRepeatableAndRentalWorkflowPersistsInPostgres()
     {
-        // 1. Lấy chuỗi kết nối PostgreSQL từ biến môi trường.
+        // 1. Lấy chuỗi kết nối PostgreSQL.
         var connection =
             Environment.GetEnvironmentVariable("CAMPUSRENT_TEST_POSTGRES")!;
 
-        // 2. Tắt SSL cho PostgreSQL CI.
+        // 2. Cấu hình kết nối.
         var testConnection = new NpgsqlConnectionStringBuilder(connection)
         {
             SslMode = SslMode.Disable
         };
 
-        // 3. Tạo schema riêng để tránh ảnh hưởng database khác.
+        // 3. Tạo schema riêng cho bài kiểm thử.
         var schema = "campusrent_test_" + Guid.NewGuid().ToString("N");
 
-        // 4. Kết nối quản trị database.
+        // 4. Kết nối database quản trị.
         await using var admin =
             new NpgsqlConnection(testConnection.ConnectionString);
 
@@ -62,12 +70,18 @@ public class PostgresTests
 
         try
         {
-            // 5. Cấu hình connection string sử dụng schema riêng.
+            // 5. Thiết lập SearchPath cho schema kiểm thử.
             var options = new NpgsqlConnectionStringBuilder(
                 testConnection.ConnectionString)
             {
                 SearchPath = schema
             };
+
+            _output.WriteLine("========== POSTGRES TEST ==========");
+            _output.WriteLine($"TEST SCHEMA: {schema}");
+            _output.WriteLine($"CONNECTION DATABASE: {options.Database}");
+            _output.WriteLine($"CONNECTION HOST: {options.Host}");
+            _output.WriteLine($"CONNECTION SEARCH PATH: {options.SearchPath}");
 
             // 6. Khởi tạo ứng dụng trong môi trường Testing.
             using var factory =
@@ -88,9 +102,12 @@ public class PostgresTests
                         });
                     });
 
-            // 7. Xác nhận ứng dụng thực sự chạy trong Testing.
+            // 7. Kiểm tra môi trường ứng dụng.
             var environment = factory.Services
                 .GetRequiredService<IWebHostEnvironment>();
+
+            _output.WriteLine(
+                $"APPLICATION ENVIRONMENT: {environment.EnvironmentName}");
 
             Assert.Equal("Testing", environment.EnvironmentName);
 
@@ -102,12 +119,16 @@ public class PostgresTests
                 var db = scope.ServiceProvider
                     .GetRequiredService<CampusRentDbContext>();
 
+                var dbConnection = db.Database.GetDbConnection();
+
+                _output.WriteLine($"EF DATABASE: {dbConnection.Database}");
+                _output.WriteLine($"EF DATA SOURCE: {dbConnection.DataSource}");
+
                 // Kiểm tra migration trước khi chạy.
                 var pendingBefore =
                     (await db.Database.GetPendingMigrationsAsync()).ToArray();
 
-                Console.WriteLine("========== MIGRATION DEBUG ==========");
-                Console.WriteLine(
+                _output.WriteLine(
                     "PENDING BEFORE: " + string.Join(", ", pendingBefore));
 
                 Assert.NotEmpty(pendingBefore);
@@ -115,13 +136,7 @@ public class PostgresTests
                 // Chạy migration.
                 await db.Database.MigrateAsync();
 
-                // ===== CHẨN ĐOÁN POSTGRESQL =====
-
-                var dbConnection = db.Database.GetDbConnection();
-
-                Console.WriteLine("DATABASE: " + dbConnection.Database);
-                Console.WriteLine("DATA SOURCE: " + dbConnection.DataSource);
-
+                // 9. Kiểm tra schema PostgreSQL thực tế.
                 await db.Database.OpenConnectionAsync();
 
                 try
@@ -138,21 +153,25 @@ public class PostgresTests
 
                     await using var reader = await command.ExecuteReaderAsync();
 
-                    while (await reader.ReadAsync())
+                    if (await reader.ReadAsync())
                     {
-                        Console.WriteLine(
-                            "CURRENT DATABASE: " + reader.GetString(0));
+                        _output.WriteLine(
+                            $"CURRENT DATABASE: {reader.GetString(0)}");
 
-                        Console.WriteLine(
-                            "CURRENT SCHEMA: " +
-                            (reader.IsDBNull(1) ? "NULL" : reader.GetString(1)));
+                        _output.WriteLine(
+                            $"CURRENT SCHEMA: " +
+                            (reader.IsDBNull(1)
+                                ? "NULL"
+                                : reader.GetString(1)));
 
-                        Console.WriteLine(
-                            "SEARCH PATH: " + reader.GetString(2));
+                        _output.WriteLine(
+                            $"SEARCH PATH: {reader.GetString(2)}");
 
-                        Console.WriteLine(
-                            "MIGRATION HISTORY TABLE: " +
-                            (reader.IsDBNull(3) ? "NOT FOUND" : reader.GetString(3)));
+                        _output.WriteLine(
+                            $"MIGRATION HISTORY TABLE: " +
+                            (reader.IsDBNull(3)
+                                ? "NOT FOUND"
+                                : reader.GetString(3)));
                     }
                 }
                 finally
@@ -160,35 +179,34 @@ public class PostgresTests
                     await db.Database.CloseConnectionAsync();
                 }
 
-                // Kiểm tra các migration đã được ghi nhận.
+                // 10. Kiểm tra migration đã áp dụng.
                 var applied =
-                    await db.Database.GetAppliedMigrationsAsync();
+                    (await db.Database.GetAppliedMigrationsAsync()).ToArray();
 
-                Console.WriteLine(
+                _output.WriteLine(
                     "APPLIED MIGRATIONS: " + string.Join(", ", applied));
 
-                // Kiểm tra migration còn chờ.
+                // 11. Kiểm tra migration còn chờ.
                 var pendingAfter =
-                    await db.Database.GetPendingMigrationsAsync();
+                    (await db.Database.GetPendingMigrationsAsync()).ToArray();
 
-                Console.WriteLine(
+                _output.WriteLine(
                     "PENDING AFTER: " + string.Join(", ", pendingAfter));
 
-                Console.WriteLine("=====================================");
+                _output.WriteLine("========== END MIGRATION DEBUG ==========");
 
                 Assert.Empty(pendingAfter);
 
-                // Chạy migration lần thứ hai để kiểm tra tính lặp lại.
+                // 12. Chạy migration lần thứ hai.
                 await db.Database.MigrateAsync();
 
-                // Thêm dữ liệu tham chiếu.
+                // 13. Tạo dữ liệu tham chiếu.
                 await DbSeeder.SeedReferenceAsync(db);
 
-                // Kiểm tra dữ liệu trường đại học.
                 Assert.Equal(5, await db.Universities.CountAsync());
             }
 
-            // 9. Đăng ký tài khoản chủ trọ.
+            // 14. Đăng ký tài khoản chủ trọ.
             var registered = await client.PostAsJsonAsync(
                 "/api/auth/register",
                 new
@@ -201,7 +219,7 @@ public class PostgresTests
 
             registered.EnsureSuccessStatusCode();
 
-            // 10. Lấy JWT token.
+            // 15. Lấy JWT token.
             using var authDocument = JsonDocument.Parse(
                 await registered.Content.ReadAsStringAsync());
 
@@ -214,7 +232,7 @@ public class PostgresTests
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
 
-            // 11. Tạo phòng trọ.
+            // 16. Tạo phòng trọ.
             var created = await client.PostAsJsonAsync(
                 "/api/rooms",
                 new
@@ -235,7 +253,7 @@ public class PostgresTests
 
             created.EnsureSuccessStatusCode();
 
-            // 12. Lấy danh sách phòng và kiểm tra dữ liệu.
+            // 17. Lấy danh sách phòng và kiểm tra.
             var response = await client.GetStringAsync(
                 "/api/rooms?maxPrice=4000000&sort=price_asc");
 
@@ -256,10 +274,9 @@ public class PostgresTests
         }
         finally
         {
-            // 13. Đóng các connection pool trước khi xóa schema.
+            // 18. Xóa connection pool và schema kiểm thử.
             NpgsqlConnection.ClearAllPools();
 
-            // 14. Xóa schema kiểm thử.
             await using var drop = new NpgsqlCommand(
                 $"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE",
                 admin);
