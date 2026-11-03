@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Collections.Generic;
 
 using CampusRent.Server.Data;
 
@@ -101,18 +102,79 @@ public class PostgresTests
                 var db = scope.ServiceProvider
                     .GetRequiredService<CampusRentDbContext>();
 
-                // Đảm bảo migration chưa được áp dụng.
+                // Kiểm tra migration trước khi chạy.
                 var pendingBefore =
                     (await db.Database.GetPendingMigrationsAsync()).ToArray();
 
+                Console.WriteLine("========== MIGRATION DEBUG ==========");
+                Console.WriteLine(
+                    "PENDING BEFORE: " + string.Join(", ", pendingBefore));
+
                 Assert.NotEmpty(pendingBefore);
 
-                // Chỉ chạy migration tại đây.
+                // Chạy migration.
                 await db.Database.MigrateAsync();
 
-                // Kiểm tra migration đã hoàn thành.
+                // ===== CHẨN ĐOÁN POSTGRESQL =====
+
+                var dbConnection = db.Database.GetDbConnection();
+
+                Console.WriteLine("DATABASE: " + dbConnection.Database);
+                Console.WriteLine("DATA SOURCE: " + dbConnection.DataSource);
+
+                await db.Database.OpenConnectionAsync();
+
+                try
+                {
+                    await using var command = dbConnection.CreateCommand();
+
+                    command.CommandText = """
+                        SELECT
+                            current_database(),
+                            current_schema(),
+                            current_setting('search_path'),
+                            to_regclass('"__EFMigrationsHistory"')::text;
+                        """;
+
+                    await using var reader = await command.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        Console.WriteLine(
+                            "CURRENT DATABASE: " + reader.GetString(0));
+
+                        Console.WriteLine(
+                            "CURRENT SCHEMA: " +
+                            (reader.IsDBNull(1) ? "NULL" : reader.GetString(1)));
+
+                        Console.WriteLine(
+                            "SEARCH PATH: " + reader.GetString(2));
+
+                        Console.WriteLine(
+                            "MIGRATION HISTORY TABLE: " +
+                            (reader.IsDBNull(3) ? "NOT FOUND" : reader.GetString(3)));
+                    }
+                }
+                finally
+                {
+                    await db.Database.CloseConnectionAsync();
+                }
+
+                // Kiểm tra các migration đã được ghi nhận.
+                var applied =
+                    await db.Database.GetAppliedMigrationsAsync();
+
+                Console.WriteLine(
+                    "APPLIED MIGRATIONS: " + string.Join(", ", applied));
+
+                // Kiểm tra migration còn chờ.
                 var pendingAfter =
                     await db.Database.GetPendingMigrationsAsync();
+
+                Console.WriteLine(
+                    "PENDING AFTER: " + string.Join(", ", pendingAfter));
+
+                Console.WriteLine("=====================================");
 
                 Assert.Empty(pendingAfter);
 
