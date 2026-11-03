@@ -89,6 +89,7 @@ desktop.ini
 *.db-wal
 playwright-report/
 test-results/
+server/uploads/
 server/wwwroot/uploads/
 server/wwwroot/assets/
 server/wwwroot/index.html

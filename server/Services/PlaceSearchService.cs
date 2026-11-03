@@ -10,11 +10,13 @@ public interface IPlaceSearchService
 {
     Task<IReadOnlyList<PlaceSuggestionDto>> SuggestAsync(string query, CancellationToken cancellationToken);
     Task<PlaceLocationDto?> ResolveAsync(string id, CancellationToken cancellationToken);
+    Task<string?> ReverseGeocodeAsync(double latitude, double longitude, CancellationToken cancellationToken);
 }
 
 public sealed class PlaceSearchService(
     CampusRentDbContext db,
     IGooglePlacesClient googlePlaces,
+    IOsmPlacesClient osmPlaces,
     IMemoryCache cache) : IPlaceSearchService
 {
     public async Task<IReadOnlyList<PlaceSuggestionDto>> SuggestAsync(string query, CancellationToken cancellationToken)
@@ -25,11 +27,23 @@ public sealed class PlaceSearchService(
         if (cache.TryGetValue(cacheKey, out IReadOnlyList<PlaceSuggestionDto>? cached)) return cached!;
 
         var internalPlaces = await InternalSuggestionsAsync(normalized, cancellationToken);
+        var externalPlaces = new List<PlaceSuggestionDto>();
+
         var googleSuggestions = await googlePlaces.SuggestAsync(normalized, cancellationToken);
-        var places = internalPlaces.Concat(googleSuggestions)
+        if (googleSuggestions.Count > 0)
+        {
+            externalPlaces.AddRange(googleSuggestions);
+        }
+        else
+        {
+            var osmSuggestions = await osmPlaces.SuggestAsync(normalized, cancellationToken);
+            externalPlaces.AddRange(osmSuggestions);
+        }
+
+        var places = internalPlaces.Concat(externalPlaces)
             .GroupBy(place => $"{place.Title}|{place.Subtitle}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
-            .Take(6)
+            .Take(8)
             .ToList();
         cache.Set(cacheKey, places, TimeSpan.FromMinutes(10));
         return places;
@@ -39,6 +53,9 @@ public sealed class PlaceSearchService(
         id.StartsWith("google:", StringComparison.Ordinal)
             ? googlePlaces.ResolveAsync(id["google:".Length..], cancellationToken)
             : Task.FromResult<PlaceLocationDto?>(null);
+
+    public Task<string?> ReverseGeocodeAsync(double latitude, double longitude, CancellationToken cancellationToken) =>
+        osmPlaces.ReverseGeocodeAsync(latitude, longitude, cancellationToken);
 
     private async Task<List<PlaceSuggestionDto>> InternalSuggestionsAsync(string query, CancellationToken cancellationToken)
     {

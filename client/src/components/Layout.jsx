@@ -38,18 +38,6 @@ export default function Layout() {
     from: location.pathname + location.search,
     backgroundLocation: location,
   };
-  const currentArea = location.pathname.startsWith('/admin')
-    ? 'admin'
-    : location.pathname === '/post' ||
-        location.pathname.startsWith('/my-rooms') ||
-        location.pathname.endsWith('/edit')
-      ? 'landlord'
-      : 'student';
-  const roleLinks = [
-    { area: 'student', to: '/', label: 'Người tìm trọ', Icon: Compass },
-    { area: 'landlord', to: '/my-rooms', label: 'Chủ nhà (Đăng tin)', Icon: KeyRound },
-    { area: 'admin', to: '/admin', label: 'Quản trị viên', Icon: ShieldCheck },
-  ];
   const profileLabel = user?.isEduVerified
     ? 'Sinh viên đã xác thực'
     : user?.role === 'ADMIN'
@@ -71,13 +59,29 @@ export default function Layout() {
       <header className="header">
         <div className="header-inner">
           <Logo />
-          <nav className="role-navigation" aria-label="Khu vực sử dụng">
-            {roleLinks.map(({ area, to, label, Icon }) => (
-              <NavLink className={currentArea === area ? 'active' : ''} to={to} key={area}>
-                <Icon size={14} />
-                <span>{label}</span>
+          <nav className="header-nav" aria-label="Điều hướng chính">
+            <NavLink to="/" end>
+              <Compass size={15} />
+              <span>Tìm phòng</span>
+            </NavLink>
+            {user?.role === 'LANDLORD' && (
+              <>
+                <NavLink to="/my-rooms">
+                  <House size={15} />
+                  <span>Phòng của tôi</span>
+                </NavLink>
+                <NavLink to="/post">
+                  <KeyRound size={15} />
+                  <span>Đăng tin</span>
+                </NavLink>
+              </>
+            )}
+            {user?.role === 'ADMIN' && (
+              <NavLink to="/admin">
+                <ShieldCheck size={15} />
+                <span>Quản trị</span>
               </NavLink>
-            ))}
+            )}
           </nav>
           <div className="header-actions">
             {user && (
@@ -147,12 +151,25 @@ export default function Layout() {
           aria-label="Điều hướng di động"
           onClick={() => setOpen(false)}
         >
-          {roleLinks.map(({ area, to, label, Icon }) => (
-            <NavLink className={currentArea === area ? 'active' : ''} to={to} key={area}>
-              <Icon size={16} /> {label}
+          <NavLink to="/" end>
+            <Compass size={16} /> Tìm phòng
+          </NavLink>
+          {user?.role === 'LANDLORD' && (
+            <>
+              <NavLink to="/my-rooms">
+                <House size={16} /> Phòng của tôi
+              </NavLink>
+              <NavLink to="/post">
+                <KeyRound size={16} /> Đăng tin
+              </NavLink>
+            </>
+          )}
+          {user?.role === 'ADMIN' && (
+            <NavLink to="/admin">
+              <ShieldCheck size={16} /> Quản trị
             </NavLink>
-          ))}
-          {user && (
+          )}
+          {user ? (
             <>
               <NavLink to="/saved">
                 <Heart size={16} /> Đã lưu {saved.length > 0 && <span>{saved.length}</span>}
@@ -162,6 +179,15 @@ export default function Layout() {
               </NavLink>
               <NavLink to="/account">
                 <UserRound size={16} /> Tài khoản
+              </NavLink>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" state={authState}>
+                Đăng nhập
+              </NavLink>
+              <NavLink to="/register" state={authState}>
+                Đăng ký
               </NavLink>
             </>
           )}

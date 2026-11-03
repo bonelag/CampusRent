@@ -15,6 +15,7 @@ import {
 import { api, amenities, estimateCost, money } from '../lib/api';
 import { useApp } from '../context/AppContext';
 import { PageTitle, Loading, ErrorState } from '../components/Common';
+import LocationPickerMap from '../components/LocationPickerMap';
 const defaults = {
   title: '',
   description: '',
@@ -184,15 +185,31 @@ export default function PostRoomPage() {
                 ))}
               </select>
             </label>
-            <div className="form-row">
-              {input('latitude', 'Vĩ độ', {
+
+            <LocationPickerMap
+              latitude={form.latitude}
+              longitude={form.longitude}
+              address={form.address}
+              universities={universities}
+              onChange={({ latitude, longitude, address: newAddress }) => {
+                setForm((prev) => ({
+                  ...prev,
+                  latitude,
+                  longitude,
+                  ...(newAddress ? { address: newAddress } : {}),
+                }));
+              }}
+            />
+
+            <div className="form-row coords-manual-row">
+              {input('latitude', 'Vĩ độ (Latitude)', {
                 type: 'number',
                 required: true,
                 min: -90,
                 max: 90,
                 step: 'any',
               })}
-              {input('longitude', 'Kinh độ', {
+              {input('longitude', 'Kinh độ (Longitude)', {
                 type: 'number',
                 required: true,
                 min: -180,
@@ -200,10 +217,6 @@ export default function PostRoomPage() {
                 step: 'any',
               })}
             </div>
-            <p>
-              Tọa độ mặc định theo trường đã chọn. Hãy cập nhật đúng vị trí phòng để kết quả tìm
-              kiếm khoảng cách chính xác.
-            </p>
             <div className="form-row">
               {input('area', 'Diện tích (m²)', {
                 type: 'number',
