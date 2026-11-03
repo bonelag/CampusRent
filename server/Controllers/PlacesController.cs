@@ -23,4 +23,14 @@ public class PlacesController(IPlaceSearchService places) : ControllerBase
         var place = await places.ResolveAsync(id, cancellationToken);
         return place is null ? NotFound(ApiResponse<object>.Fail("Không thể xác định vị trí này.")) : Ok(ApiResponse<object>.Ok(place));
     }
+
+    [HttpGet("reverse"), EnableRateLimiting("places")]
+    public async Task<IActionResult> Reverse([FromQuery] double? lat, [FromQuery] double? lon, CancellationToken cancellationToken)
+    {
+        if (lat is null or < -90 or > 90 || lon is null or < -180 or > 180)
+            return BadRequest(ApiResponse<object>.Fail("Tọa độ không hợp lệ."));
+
+        var address = await places.ReverseGeocodeAsync(lat.Value, lon.Value, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { address = address ?? "Vị trí đã chọn trên bản đồ", latitude = lat.Value, longitude = lon.Value }));
+    }
 }

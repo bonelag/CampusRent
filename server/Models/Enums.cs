@@ -25,3 +25,11 @@ public enum ReportStatus
     RESOLVED,
     DISMISSED
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum LandlordRequestStatus
+{
+    PENDING,
+    APPROVED,
+    REJECTED
+}

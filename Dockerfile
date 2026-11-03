@@ -18,6 +18,7 @@ ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 COPY --from=api /publish ./
 COPY --from=web /src/client/dist ./wwwroot
+RUN mkdir -p /app/uploads && chown -R $APP_UID:$APP_UID /app/uploads
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "CampusRent.Server.dll"]

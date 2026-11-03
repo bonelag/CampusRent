@@ -71,8 +71,13 @@ builder.Services.AddDbContext<CampusRentDbContext>(options =>
 {
     if (builder.Configuration["Database:Provider"] == "Postgres")
     {
-        options.UseNpgsql(
+        var rawConn =
             builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? "";
+
+        options.UseNpgsql(
+            NormalizePostgresConnectionString(rawConn)
         );
     }
     else
@@ -159,6 +164,7 @@ builder.Services.AddRateLimiter(o =>
 // Đăng ký các dịch vụ.
 builder.Services.AddMemoryCache();
 
+// Google Places.
 builder.Services.AddHttpClient<IGooglePlacesClient, GooglePlacesClient>(
     client =>
     {
@@ -167,6 +173,19 @@ builder.Services.AddHttpClient<IGooglePlacesClient, GooglePlacesClient>(
         );
 
         client.Timeout = TimeSpan.FromSeconds(5);
+    }
+);
+
+// OpenStreetMap / Photon.
+builder.Services.AddHttpClient<IOsmPlacesClient, OsmPlacesClient>(
+    client =>
+    {
+        client.BaseAddress = new Uri("https://photon.komoot.io/");
+        client.Timeout = TimeSpan.FromSeconds(5);
+
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "CampusRent/1.0 (contact@campusrent.vn)"
+        );
     }
 );
 
@@ -233,7 +252,7 @@ if (development)
     app.UseSwaggerUI();
 }
 
-// Cấu hình Static Files và HTTP Pipeline.
+// Cấu hình Static Files.
 app.UseDefaultFiles();
 
 app.UseStaticFiles(new StaticFileOptions
@@ -243,6 +262,26 @@ app.UseStaticFiles(new StaticFileOptions
             context.Context.Request.Path.StartsWithSegments("/assets")
                 ? "public,max-age=31536000,immutable"
                 : "no-cache"
+});
+
+// Cấu hình thư mục chứa ảnh tải lên.
+var uploadsDir = Path.Combine(
+    builder.Environment.ContentRootPath,
+    "uploads"
+);
+
+if (!Directory.Exists(uploadsDir))
+{
+    Directory.CreateDirectory(uploadsDir);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider =
+        new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+            uploadsDir
+        ),
+    RequestPath = "/uploads"
 });
 
 app.UseRouting();
@@ -293,13 +332,41 @@ using (var scope = app.Services.CreateScope())
         {
             // SQLite vẫn cần tạo bảng cho ApiTests.
             await db.Database.EnsureCreatedAsync();
+
+            // Tạo bảng landlord_requests nếu chưa tồn tại.
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""landlord_requests"" (
+                    ""id"" TEXT NOT NULL CONSTRAINT ""PK_landlord_requests"" PRIMARY KEY,
+                    ""user_id"" TEXT NOT NULL,
+                    ""title"" TEXT NOT NULL,
+                    ""reason"" TEXT NOT NULL,
+                    ""image_urls"" TEXT NOT NULL,
+                    ""pdf_url"" TEXT NULL,
+                    ""pdf_file_name"" TEXT NULL,
+                    ""status"" TEXT NOT NULL,
+                    ""admin_note"" TEXT NULL,
+                    ""created_at"" TEXT NOT NULL,
+                    ""updated_at"" TEXT NOT NULL,
+                    CONSTRAINT ""FK_landlord_requests_users_user_id""
+                        FOREIGN KEY (""user_id"")
+                        REFERENCES ""users"" (""id"")
+                        ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS
+                    ""IX_landlord_requests_status""
+                    ON ""landlord_requests"" (""status"");
+
+                CREATE INDEX IF NOT EXISTS
+                    ""IX_landlord_requests_user_id""
+                    ON ""landlord_requests"" (""user_id"");
+            ");
         }
     }
 
     // Cho phép chạy Migration thủ công bằng --migrate.
     if (args.Contains("--migrate"))
     {
-        await db.Database.MigrateAsync();
         return;
     }
 
@@ -351,4 +418,93 @@ using (var scope = app.Services.CreateScope())
 // Chạy ứng dụng.
 app.Run();
 
+// Chuẩn hóa chuỗi kết nối PostgreSQL.
+static string NormalizePostgresConnectionString(string connStr)
+{
+    if (string.IsNullOrWhiteSpace(connStr))
+    {
+        return connStr;
+    }
+
+    connStr = connStr.Trim();
+
+    if (connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            var uri = new Uri(connStr);
+            var userInfo = uri.UserInfo.Split(':');
+
+            var username = Uri.UnescapeDataString(userInfo[0]);
+
+            var password = userInfo.Length > 1
+                ? Uri.UnescapeDataString(userInfo[1])
+                : "";
+
+            var database = uri.AbsolutePath.TrimStart('/');
+
+            if (string.IsNullOrWhiteSpace(database))
+            {
+                database = "postgres";
+            }
+
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            var host = uri.Host;
+
+            if (host.EndsWith(".supabase.co", StringComparison.OrdinalIgnoreCase) &&
+                host.StartsWith("db.", StringComparison.OrdinalIgnoreCase))
+            {
+                var projectRef = host.Substring(
+                    3,
+                    host.IndexOf(
+                        ".supabase.co",
+                        StringComparison.OrdinalIgnoreCase
+                    ) - 3
+                );
+
+                var isIpv4Resolved = false;
+
+                try
+                {
+                    var entry = System.Net.Dns.GetHostEntry(host);
+
+                    isIpv4Resolved = entry.AddressList.Any(
+                        ip => ip.AddressFamily ==
+                              System.Net.Sockets.AddressFamily.InterNetwork
+                    );
+                }
+                catch
+                {
+                }
+
+                if (!isIpv4Resolved)
+                {
+                    host = "aws-0-ap-south-1.pooler.supabase.com";
+
+                    if (!username.Contains('.'))
+                    {
+                        username = $"{username}.{projectRef}";
+                    }
+                }
+            }
+
+            return
+                $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+        }
+        catch
+        {
+            return connStr;
+        }
+    }
+
+    if (!connStr.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+    {
+        connStr += ";SSL Mode=Require;Trust Server Certificate=true;";
+    }
+
+    return connStr;
+}
+
+// Giúp WebApplicationFactory truy cập Program trong kiểm thử.
 public partial class Program { }
