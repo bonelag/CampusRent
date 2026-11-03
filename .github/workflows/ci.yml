@@ -107,8 +107,17 @@ jobs:
           ADMIN_PASSWORD: ci-only-admin-password
         run: |
           docker compose config --quiet
-          docker compose up web -d --no-build
-          curl --retry 30 --retry-delay 2 --retry-connrefused --fail http://localhost:8080/health
+          docker compose up -d --no-build
+          echo "Waiting for web service to become healthy..."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Web container is healthy and responding!"
+              break
+            fi
+            echo "Waiting for startup ($i/30)..."
+            sleep 2
+          done
+          curl --fail http://localhost:8080/health
           curl --fail http://localhost:8080/
           curl --fail http://localhost:8080/api/universities
 

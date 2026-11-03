@@ -241,7 +241,8 @@ static string NormalizePostgresConnectionString(string connStr)
     {
         var isLocal = connStr.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
                       connStr.Contains("127.0.0.1") ||
-                      connStr.Contains("Host=postgres", StringComparison.OrdinalIgnoreCase);
+                      connStr.Contains("Host=postgres", StringComparison.OrdinalIgnoreCase) ||
+                      connStr.Contains("Host=db", StringComparison.OrdinalIgnoreCase);
         connStr += isLocal
             ? ";SSL Mode=Prefer;Trust Server Certificate=true;"
             : ";SSL Mode=Require;Trust Server Certificate=true;";
