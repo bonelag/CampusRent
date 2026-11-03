@@ -10,7 +10,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__Provider: ${DATABASE_PROVIDER:-Postgres}
-      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=db;Port=5432;Database=campusrent;Username=postgres;Password=campusrent_secret;SSL Mode=Disable;Trust Server Certificate=true;}
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=db;Port=5432;Database=campusrent;Username=postgres;Password=${POSTGRES_PASSWORD:-campusrent_secret};SSL Mode=Disable;Trust Server Certificate=true;}
       Jwt__Secret: ${JWT_SECRET:-CampusRent_Production_Secret_Key_2026_Secure_JWT_Token_At_Least_32_Chars}
       Jwt__Issuer: CampusRent
       Jwt__Audience: CampusRentApp
