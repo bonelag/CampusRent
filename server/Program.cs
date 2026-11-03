@@ -37,7 +37,22 @@ builder.Services.AddDbContext<CampusRentDbContext>(options =>
         var rawConn = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? Environment.GetEnvironmentVariable("DATABASE_URL")
             ?? "";
-        options.UseNpgsql(NormalizePostgresConnectionString(rawConn));
+        var normalizedConn = NormalizePostgresConnectionString(rawConn);
+        string? targetSchema = null;
+        try
+        {
+            var searchPath = new Npgsql.NpgsqlConnectionStringBuilder(normalizedConn).SearchPath;
+            targetSchema = searchPath?.Split(',')[0].Trim();
+        }
+        catch { }
+
+        options.UseNpgsql(normalizedConn, npgsql =>
+        {
+            if (!string.IsNullOrWhiteSpace(targetSchema))
+            {
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", targetSchema);
+            }
+        });
     }
     else
     {
