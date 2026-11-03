@@ -23,7 +23,13 @@ public class PostgresTests
     [PostgresFact]
     public async Task MigrationsAreRepeatableAndRentalWorkflowPersistsInPostgres()
     {
-        var connection = Environment.GetEnvironmentVariable("CAMPUSRENT_TEST_POSTGRES")!;
+        var rawConn = Environment.GetEnvironmentVariable("CAMPUSRENT_TEST_POSTGRES")!;
+        var connBuilder = new NpgsqlConnectionStringBuilder(rawConn);
+        if (!rawConn.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase))
+        {
+            connBuilder.SslMode = SslMode.Disable;
+        }
+        var connection = connBuilder.ToString();
         var schema = "campusrent_test_" + Guid.NewGuid().ToString("N");
         await using var admin = new NpgsqlConnection(connection);
         await admin.OpenAsync();

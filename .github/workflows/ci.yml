@@ -46,7 +46,7 @@ jobs:
       - name: Run Backend Tests (xUnit with coverage)
         run: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
         env:
-          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password
+          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password;SSL Mode=Disable;Trust Server Certificate=true;
 
       - name: Check EF Core Migrations
         run: dotnet ef migrations has-pending-model-changes --project server --no-build
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Local Docker Image
-        run: docker build -t campusrent:local .
+        run: docker build -t campusrent:latest .
 
       - name: Validate Compose and exercise production startup
         env:
@@ -107,7 +107,7 @@ jobs:
           ADMIN_PASSWORD: ci-only-admin-password
         run: |
           docker compose config --quiet
-          docker compose up app -d --no-build
+          docker compose up web -d --no-build
           curl --retry 30 --retry-delay 2 --retry-connrefused --fail http://localhost:8080/health
           curl --fail http://localhost:8080/
           curl --fail http://localhost:8080/api/universities
