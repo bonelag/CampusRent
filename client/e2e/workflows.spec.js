@@ -31,7 +31,18 @@ test('gợi ý vị trí thời gian thực đặt tâm tìm kiếm trên bản 
   await page.route('**/api/places/suggest?*', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ data: [{ id: 'listing:103', title: 'Tòa nhà 103 Tạ Quang Bửu', subtitle: 'Hai Bà Trưng, Hà Nội', latitude: 21.005, longitude: 105.843, source: 'listing' }] }),
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'listing:103',
+            title: 'Tòa nhà 103 Tạ Quang Bửu',
+            subtitle: 'Hai Bà Trưng, Hà Nội',
+            latitude: 21.005,
+            longitude: 105.843,
+            source: 'listing',
+          },
+        ],
+      }),
     });
   });
   await page.goto('/');
