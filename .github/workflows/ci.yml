@@ -1,12 +1,17 @@
 name: CampusRent CI
+
 on:
   push:
-    branches: [main, "codex/**"]
+    branches: ["**"]
   pull_request:
+  workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   test:
+    name: Run All Automated Tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -20,47 +25,80 @@ jobs:
           --health-cmd "pg_isready -U postgres -d campusrent_ci"
           --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK 8.0
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: client/package-lock.json
-      - run: dotnet tool restore
-      - run: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Run Backend Tests (xUnit with coverage)
+        run: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
         env:
           CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password
-      - run: dotnet ef migrations has-pending-model-changes --project server --no-build
-      - run: npm ci
+
+      - name: Check EF Core Migrations
+        run: dotnet ef migrations has-pending-model-changes --project server --no-build
+
+      - name: Install Frontend Dependencies
         working-directory: client
-      - run: npm audit --audit-level=moderate
+        run: npm ci
+
+      - name: Audit NPM Packages
         working-directory: client
-      - run: npm test
+        run: npm audit --audit-level=moderate
+
+      - name: Run Frontend Tests (Vitest)
         working-directory: client
-      - run: npm run format:check
+        run: npm test
+
+      - name: Check Code Format (Prettier)
         working-directory: client
-      - run: npm run build
+        run: npm run format:check
+
+      - name: Build Frontend (Vite)
         working-directory: client
-      - run: npx playwright install --with-deps chromium
+        run: npm run build
+
+      - name: Install Playwright Browsers
         working-directory: client
-      - run: npm run test:e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests (Playwright)
         working-directory: client
-      - uses: actions/upload-artifact@v4
+        run: npm run test:e2e
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-reports
           path: |
             client/playwright-report/
             tests/CampusRent.Tests/TestResults/
+
   container:
+    name: Build & Smoke Test Docker Container
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t campusrent:local .
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Local Docker Image
+        run: docker build -t campusrent:local .
+
       - name: Validate Compose and exercise production startup
         env:
           POSTGRES_PASSWORD: ci-only-database-password
@@ -73,7 +111,8 @@ jobs:
           curl --retry 30 --retry-delay 2 --retry-connrefused --fail http://localhost:8080/health
           curl --fail http://localhost:8080/
           curl --fail http://localhost:8080/api/universities
-      - name: Container logs
+
+      - name: Output Container Logs on Failure
         if: failure()
         run: docker compose logs --no-color
         env:
