@@ -238,10 +238,7 @@ export default function AdminPage() {
 
           <section className="dashboard-panel moderation-panel">
             <div className="tabs" role="group" aria-label="Nội dung quản trị">
-              <button
-                className={tab === 'users' ? 'active' : ''}
-                onClick={() => setTab('users')}
-              >
+              <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>
                 Người dùng <span>{data.users?.length ?? data.stats.users}</span>
               </button>
               <button

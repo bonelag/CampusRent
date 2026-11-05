@@ -5756,7 +5756,7 @@ body {
   font-size: 13px;
   color: #334155;
 }
-.admin-checkbox-row input[type="checkbox"] {
+.admin-checkbox-row input[type='checkbox'] {
   width: 18px;
   height: 18px;
   accent-color: var(--primary);
@@ -5905,10 +5905,18 @@ body {
   animation: bouncePin 0.4s ease-out;
 }
 @keyframes bouncePin {
-  0% { transform: translateY(-16px); }
-  50% { transform: translateY(0); }
-  75% { transform: translateY(-4px); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(-16px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 .picker-footer-info {
   display: flex;

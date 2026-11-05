@@ -37,7 +37,22 @@ builder.Services.AddDbContext<CampusRentDbContext>(options =>
         var rawConn = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? Environment.GetEnvironmentVariable("DATABASE_URL")
             ?? "";
-        options.UseNpgsql(NormalizePostgresConnectionString(rawConn));
+        var normalizedConn = NormalizePostgresConnectionString(rawConn);
+        string? targetSchema = null;
+        try
+        {
+            var searchPath = new Npgsql.NpgsqlConnectionStringBuilder(normalizedConn).SearchPath;
+            targetSchema = searchPath?.Split(',')[0].Trim();
+        }
+        catch { }
+
+        options.UseNpgsql(normalizedConn, npgsql =>
+        {
+            if (!string.IsNullOrWhiteSpace(targetSchema))
+            {
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", targetSchema);
+            }
+        });
     }
     else
     {
@@ -226,7 +241,8 @@ static string NormalizePostgresConnectionString(string connStr)
     {
         var isLocal = connStr.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
                       connStr.Contains("127.0.0.1") ||
-                      connStr.Contains("Host=postgres", StringComparison.OrdinalIgnoreCase);
+                      connStr.Contains("Host=postgres", StringComparison.OrdinalIgnoreCase) ||
+                      connStr.Contains("Host=db", StringComparison.OrdinalIgnoreCase);
         connStr += isLocal
             ? ";SSL Mode=Prefer;Trust Server Certificate=true;"
             : ";SSL Mode=Require;Trust Server Certificate=true;";

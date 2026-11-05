@@ -42,8 +42,8 @@ public class PostgresTests
             using (var scope = factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
-                Assert.Empty(await db.Database.GetPendingMigrationsAsync());
                 await db.Database.MigrateAsync();
+                Assert.Empty(await db.Database.GetPendingMigrationsAsync());
                 await DbSeeder.SeedReferenceAsync(db);
                 Assert.Equal(5, await db.Universities.CountAsync());
             }
