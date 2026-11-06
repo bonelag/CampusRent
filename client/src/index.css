@@ -5262,6 +5262,18 @@ body {
   font-weight: 600;
 }
 
+@media (max-width: 760px) {
+  .header-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions .register-link {
+    display: none;
+  }
+}
+
 /* Landlord Upgrade Form & Sections */
 .upgrade-section {
   margin-top: 24px;
