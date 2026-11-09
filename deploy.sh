@@ -17,6 +17,7 @@ CampusRent Docker installer (Ubuntu 22.04+, Debian 12+)
   sh deploy.sh --non-interactive      Read CAMPUSRENT_* environment variables
 
 Optional: CAMPUSRENT_SOURCE_DIR=/path/to/checkout (otherwise download GitHub main)
+          CAMPUSRENT_GITHUB_CURL_CONFIG=/path/to/private/github-curl.conf
           CAMPUSRENT_INSTALL_DIR=/opt/campusrent
           CAMPUSRENT_REPO=bonelag/CampusRent, CAMPUSRENT_REF=main
 Automation: CAMPUSRENT_DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL
@@ -267,7 +268,13 @@ if [ -n "${CAMPUSRENT_SOURCE_DIR:-}" ]; then
     as_root tar -xzf "$cr_work/source.tar.gz" -C "$cr_release" --no-same-owner
 else
     say "Downloading $cr_repo ($cr_ref)..."
-    curl -fsSL --retry 3 --proto '=https' "https://api.github.com/repos/$cr_repo/tarball/$cr_ref" -o "$cr_work/source.tar.gz"
+    if [ -n "${CAMPUSRENT_GITHUB_CURL_CONFIG:-}" ]; then
+        [ -r "$CAMPUSRENT_GITHUB_CURL_CONFIG" ] || fail 'GitHub curl authentication configuration is not readable.'
+        curl --config "$CAMPUSRENT_GITHUB_CURL_CONFIG" -fsSL --retry 3 --proto '=https' \
+            "https://api.github.com/repos/$cr_repo/tarball/$cr_ref" -o "$cr_work/source.tar.gz"
+    else
+        curl -fsSL --retry 3 --proto '=https' "https://api.github.com/repos/$cr_repo/tarball/$cr_ref" -o "$cr_work/source.tar.gz"
+    fi
     python3 - "$cr_work/source.tar.gz" <<'PY'
 import sys, tarfile
 from pathlib import PurePosixPath

@@ -6,7 +6,30 @@
 curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh | sh
 ```
 
-Có thể thay `sh` bằng `bash`. Installer đọc câu trả lời từ `/dev/tty`, nên các câu hỏi PostgreSQL vẫn hoạt động khi script được tải qua pipe. URL trên dùng được sau khi `deploy.sh` và các file triển khai được đưa lên nhánh `main`.
+Có thể thay `sh` bằng `bash`. Installer đọc câu trả lời từ `/dev/tty`, nên các câu hỏi PostgreSQL vẫn hoạt động khi script được tải qua pipe. Lệnh trên dùng cho repository public. Kho `bonelag/CampusRent` hiện private; cần xác thực theo hướng dẫn dưới đây.
+
+### Repository private
+
+Tạo file cấu hình curl ngoài checkout, điền token GitHub có quyền đọc repository rồi đặt quyền `600`:
+
+```sh
+mkdir -p "$HOME/.config/campusrent"
+cat > "$HOME/.config/campusrent/github-curl.conf" <<'CURL'
+header = "Authorization: Bearer YOUR_GITHUB_TOKEN"
+header = "Accept: application/vnd.github.raw+json"
+CURL
+chmod 600 "$HOME/.config/campusrent/github-curl.conf"
+```
+
+Thay `YOUR_GITHUB_TOKEN` trong file bằng token của bạn trước khi chạy:
+
+```sh
+curl -fsSL --config "$HOME/.config/campusrent/github-curl.conf" \
+  'https://api.github.com/repos/bonelag/CampusRent/contents/deploy.sh?ref=main' \
+  | CAMPUSRENT_GITHUB_CURL_CONFIG="$HOME/.config/campusrent/github-curl.conf" sh
+```
+
+Installer dùng lại file cấu hình cho bước tải source private; token không nằm trong đối số command hoặc cấu hình ứng dụng. File credential bị loại khỏi Git và Docker build. Với checkout đã được clone bằng quyền Git của bạn, có thể dùng lệnh cài từ checkout ngay bên dưới.
 
 Để cài ngay từ checkout hiện tại trên Linux:
 

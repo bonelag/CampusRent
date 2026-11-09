@@ -73,7 +73,7 @@ Test backend dùng SQLite quan hệ thật và cơ sở dữ liệu riêng cho t
 curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh | sh
 ```
 
-URL trên dùng được sau khi các thay đổi được đưa lên `main`. Từ checkout Linux hiện tại, chạy `CAMPUSRENT_SOURCE_DIR="$PWD" sh deploy.sh`. Kết quả kiểm tra gần nhất nằm trong [TESTING.md](docs/TESTING.md).
+Lệnh tải ẩn danh cần repository public. Kho hiện private; dùng cấu hình curl có token theo [hướng dẫn triển khai](docs/DEPLOYMENT.md), hoặc từ checkout Linux chạy `CAMPUSRENT_SOURCE_DIR="$PWD" sh deploy.sh`. Kết quả kiểm tra gần nhất nằm trong [TESTING.md](docs/TESTING.md).
 
 Migration chuẩn nằm trong `server/Migrations/`; `db.sql` và Razor Views là tài liệu/khung giao diện lịch sử, không được dùng bởi ứng dụng React hiện tại.
 
