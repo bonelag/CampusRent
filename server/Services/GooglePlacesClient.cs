@@ -48,8 +48,13 @@ public sealed class GooglePlacesClient(HttpClient client, IConfiguration configu
             }
             return results;
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Google Places autocomplete timed out");
+            return [];
+        }
         catch (OperationCanceledException) { throw; }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
         {
             logger.LogWarning(ex, "Google Places autocomplete request failed");
             return [];
@@ -75,8 +80,13 @@ public sealed class GooglePlacesClient(HttpClient client, IConfiguration configu
                 latitude.GetDouble(),
                 longitude.GetDouble());
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Google Places resolution timed out");
+            return null;
+        }
         catch (OperationCanceledException) { throw; }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
         {
             logger.LogWarning(ex, "Google Places detail request failed");
             return null;

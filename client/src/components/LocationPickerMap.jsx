@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useApp } from '../context/AppContext';
 import 'leaflet/dist/leaflet.css';
 
 const pickerIcon = L.divIcon({
@@ -33,7 +34,7 @@ function MapController({ center, zoom = 16 }) {
   const map = useMap();
   useEffect(() => {
     map.invalidateSize();
-    if (center && center[0] && center[1]) {
+    if (center && center.every(Number.isFinite)) {
       map.flyTo(center, zoom, { duration: 0.8 });
     }
   }, [center, zoom, map]);
@@ -57,7 +58,9 @@ export default function LocationPickerMap({
   universities = [],
 }) {
   const currentPos = useMemo(() => {
-    return latitude && longitude ? [latitude, longitude] : [21.0055, 105.8433];
+    return Number.isFinite(latitude) && Number.isFinite(longitude)
+      ? [latitude, longitude]
+      : [21.0055, 105.8433];
   }, [latitude, longitude]);
 
   const [mapCenter, setMapCenter] = useState(currentPos);
@@ -68,6 +71,11 @@ export default function LocationPickerMap({
   const [locating, setLocating] = useState(false);
   const [reverseAddress, setReverseAddress] = useState('');
   const [reverseLoading, setReverseLoading] = useState(false);
+  const { notify } = useApp();
+  const reverseRequest = useRef(null);
+
+  useEffect(() => setMapCenter(currentPos), [currentPos]);
+  useEffect(() => () => reverseRequest.current?.abort(), []);
 
   const markerRef = useRef(null);
   const searchBoxRef = useRef(null);
@@ -85,39 +93,52 @@ export default function LocationPickerMap({
 
   // Search places debounce
   useEffect(() => {
-    if (!searchText.trim() || searchText.trim().length < 2) {
+    if (!dropdownOpen || !searchText.trim() || searchText.trim().length < 2) {
       setSuggestions([]);
+      setSuggestLoading(false);
       return;
     }
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setSuggestLoading(true);
       try {
-        const results = await api('/places/suggest?q=' + encodeURIComponent(searchText.trim()));
-        setSuggestions(results);
-        setDropdownOpen(true);
-      } catch {
-        setSuggestions([]);
+        const results = await api('/places/suggest?q=' + encodeURIComponent(searchText.trim()), {
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setSuggestions(results);
+          setDropdownOpen(true);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') setSuggestions([]);
       } finally {
-        setSuggestLoading(false);
+        if (!controller.signal.aborted) setSuggestLoading(false);
       }
     }, 250);
 
-    return () => clearTimeout(timer);
-  }, [searchText]);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchText, dropdownOpen]);
 
   async function handleReverseGeocode(lat, lon) {
+    reverseRequest.current?.abort();
+    const controller = new AbortController();
+    reverseRequest.current = controller;
     setReverseLoading(true);
+    setReverseAddress('');
     try {
-      const res = await api(`/places/reverse?lat=${lat}&lon=${lon}`);
+      const res = await api(`/places/reverse?lat=${lat}&lon=${lon}`, { signal: controller.signal });
       if (res.address && res.address !== 'Vị trí đã chọn trên bản đồ') {
         setReverseAddress(res.address);
       } else {
         setReverseAddress('');
       }
-    } catch {
-      setReverseAddress('');
+    } catch (err) {
+      if (err.name !== 'AbortError') setReverseAddress('');
     } finally {
-      setReverseLoading(false);
+      if (!controller.signal.aborted) setReverseLoading(false);
     }
   }
 
@@ -137,18 +158,29 @@ export default function LocationPickerMap({
     }
   }
 
-  function handleSelectSuggestion(s) {
+  async function handleSelectSuggestion(s) {
     setDropdownOpen(false);
     setSearchText(s.title);
-    if (s.latitude && s.longitude) {
-      const fullAddr = s.subtitle ? `${s.title}, ${s.subtitle}` : s.title;
-      handlePointSelect(s.latitude, s.longitude, fullAddr);
+    setSuggestLoading(true);
+    try {
+      const selected =
+        s.latitude == null || s.longitude == null
+          ? await api('/places/resolve?id=' + encodeURIComponent(s.id))
+          : s;
+      const fullAddr = selected.subtitle
+        ? `${selected.title}, ${selected.subtitle}`
+        : selected.title;
+      handlePointSelect(selected.latitude, selected.longitude, fullAddr);
+    } catch (err) {
+      notify(err.message, 'error');
+    } finally {
+      setSuggestLoading(false);
     }
   }
 
   function handleLocateMe() {
     if (!navigator.geolocation) {
-      alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+      notify('Trình duyệt của bạn không hỗ trợ định vị GPS.', 'error');
       return;
     }
     setLocating(true);
@@ -159,7 +191,7 @@ export default function LocationPickerMap({
       },
       () => {
         setLocating(false);
-        alert('Không thể lấy vị trí hiện tại. Vui lòng cho phép quyền truy cập vị trí.');
+        notify('Không thể lấy vị trí hiện tại. Vui lòng cho phép quyền truy cập vị trí.', 'error');
       },
       { timeout: 8000 }
     );
@@ -189,10 +221,21 @@ export default function LocationPickerMap({
           <Search size={16} className="search-icon" />
           <input
             type="text"
+            aria-label="Tìm địa chỉ đặt ghim phòng trọ"
             placeholder="Tìm tên đường, ngõ ngách, địa điểm (VD: 84 Chùa Láng, Bách Khoa...)"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setDropdownOpen(true);
+            }}
             onFocus={() => searchText.trim().length >= 2 && setDropdownOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setDropdownOpen(false);
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                if (dropdownOpen && suggestions.length) handleSelectSuggestion(suggestions[0]);
+              }
+            }}
           />
           {searchText && (
             <button

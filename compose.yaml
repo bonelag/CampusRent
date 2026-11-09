@@ -6,17 +6,22 @@ services:
     image: campusrent:latest
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${WEB_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Database__Provider: ${DATABASE_PROVIDER:-Postgres}
-      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=db;Port=5432;Database=campusrent;Username=postgres;Password=${POSTGRES_PASSWORD:-campusrent_secret};SSL Mode=Disable;Trust Server Certificate=true;}
-      Jwt__Secret: ${JWT_SECRET:-CampusRent_Production_Secret_Key_2026_Secure_JWT_Token_At_Least_32_Chars}
+      Database__Provider: Postgres
+      Postgres__Host: db
+      Postgres__Port: 5432
+      Postgres__Database: campusrent
+      Postgres__Username: postgres
+      Postgres__Password: ${POSTGRES_PASSWORD:?Set a unique PostgreSQL password}
+      Postgres__SslMode: Disable
+      Jwt__Secret: ${JWT_SECRET:?Set a random JWT secret of at least 32 bytes}
       Jwt__Issuer: CampusRent
       Jwt__Audience: CampusRentApp
       ClientUrl: ${CLIENT_URL:-http://localhost:8080}
-      Admin__Email: ${ADMIN_EMAIL:-admin@campusrent.vn}
-      Admin__Password: ${ADMIN_PASSWORD:-Password@123456}
+      Admin__Email: ${ADMIN_EMAIL:?Set the administrator email}
+      Admin__Password: ${ADMIN_PASSWORD:?Set a unique administrator password}
       Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
       Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
       Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
@@ -26,12 +31,21 @@ services:
         condition: service_healthy
     volumes:
       - uploads_data:/app/uploads
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "dotnet", "CampusRent.Server.dll", "--healthcheck"]
-      interval: 15s
-      timeout: 5s
-      start_period: 20s
-      retries: 3
+      interval: 10s
+      timeout: 6s
+      start_period: 30s
+      retries: 12
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   db:
     image: postgres:16-alpine
@@ -39,7 +53,7 @@ services:
     environment:
       POSTGRES_DB: campusrent
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusrent_secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique PostgreSQL password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -47,6 +61,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
   uploads_data:

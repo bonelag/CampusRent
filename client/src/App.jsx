@@ -4,14 +4,15 @@ import Layout from './components/Layout';
 import { ScrollTop, Empty } from './components/Common';
 import ProtectedRoute from './components/ProtectedRoute';
 import SearchPage from './pages/SearchPage';
-import RoomDetailPage from './pages/RoomDetailPage';
-import AuthPage from './pages/AuthPage';
-import SavedPage from './pages/SavedPage';
-import BookingsPage from './pages/BookingsPage';
-import AccountPage from './pages/AccountPage';
-import PostRoomPage from './pages/PostRoomPage';
-import MyRoomsPage from './pages/MyRoomsPage';
-import AdminPage from './pages/AdminPage';
+import { lazy } from 'react';
+const RoomDetailPage = lazy(() => import('./pages/RoomDetailPage'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const SavedPage = lazy(() => import('./pages/SavedPage'));
+const BookingsPage = lazy(() => import('./pages/BookingsPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const PostRoomPage = lazy(() => import('./pages/PostRoomPage'));
+const MyRoomsPage = lazy(() => import('./pages/MyRoomsPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 export default function App() {
   return (
     <BrowserRouter>

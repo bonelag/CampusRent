@@ -11,7 +11,11 @@ export default function ProtectedRoute({ roles }) {
     return (
       <div className="container page-shell">
         <Empty
-          title="Trang dành cho chủ trọ"
+          title={
+            roles.length === 1 && roles[0] === 'ADMIN'
+              ? 'Trang dành cho quản trị viên'
+              : 'Trang dành cho chủ trọ'
+          }
           text="Tài khoản của bạn chưa có quyền truy cập chức năng này."
         >
           <Link className="button primary" to="/">

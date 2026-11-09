@@ -101,7 +101,8 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
     private async Task<string?> Validate(CreateRoomDto dto)
     {
         if (dto.UniversityId.HasValue && !await db.Universities.AnyAsync(u => u.Id == dto.UniversityId)) return "Trường đại học không hợp lệ.";
-        if (dto.ImageUrls.Count is < 1 or > 10 || dto.ImageUrls.Any(url => !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https")) return "Cần 1–10 ảnh với đường dẫn HTTPS.";
+        if (dto.ImageUrls.Count is < 1 or > 10 || dto.ImageUrls.Any(url => !UploadStorage.IsPublicImageUrl(url) && (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https"))) return "Cần 1–10 ảnh đã tải lên hoặc đường dẫn HTTPS.";
+        if (string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.Description) || string.IsNullOrWhiteSpace(dto.Address)) return "Nhập đầy đủ tiêu đề, mô tả và địa chỉ.";
         if (dto.Amenities.Count > 20 || dto.Amenities.Any(a => a.Length > 50)) return "Danh sách tiện ích không hợp lệ.";
         return null;
     }

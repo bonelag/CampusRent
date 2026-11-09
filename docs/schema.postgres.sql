@@ -274,3 +274,69 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102092534_AddLandlordRequests') THEN
+    CREATE TABLE landlord_requests (
+        id uuid NOT NULL,
+        user_id uuid NOT NULL,
+        title character varying(200) NOT NULL,
+        reason text NOT NULL,
+        image_urls text NOT NULL,
+        pdf_url text,
+        pdf_file_name character varying(255),
+        status text NOT NULL,
+        admin_note text,
+        created_at timestamp with time zone NOT NULL,
+        updated_at timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_landlord_requests" PRIMARY KEY (id),
+        CONSTRAINT "FK_landlord_requests_users_user_id" FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102092534_AddLandlordRequests') THEN
+    CREATE INDEX "IX_landlord_requests_status" ON landlord_requests (status);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102092534_AddLandlordRequests') THEN
+    CREATE INDEX "IX_landlord_requests_user_id" ON landlord_requests (user_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261102092534_AddLandlordRequests') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261102092534_AddLandlordRequests', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261109183728_EnforcePendingLandlordRequest') THEN
+    CREATE UNIQUE INDEX "IX_landlord_requests_pending_user" ON landlord_requests (user_id) WHERE "status" = 'PENDING';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261109183728_EnforcePendingLandlordRequest') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261109183728_EnforcePendingLandlordRequest', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+

@@ -13,8 +13,10 @@ public class CreateLandlordRequestDto
     [MaxLength(2000, ErrorMessage = "Lý do không được vượt quá 2000 ký tự.")]
     public string Reason { get; set; } = string.Empty;
 
+    [MaxLength(10)]
     public List<string> ImageUrls { get; set; } = new();
 
+    [MaxLength(2048)]
     public string? PdfUrl { get; set; }
 
     [MaxLength(255)]

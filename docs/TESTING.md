@@ -1,39 +1,74 @@
 # Kết quả kiểm thử
 
-Kiểm tra tại workspace ngày 21/10/2026 (Asia/Saigon).
+Kiểm tra tại workspace ngày 10/11/2026 (Asia/Saigon), với .NET SDK 8.0.426, Node.js 22.23.4, Chrome và Docker/Compose trong Ubuntu 22.04 WSL.
 
 | Nhóm | Kết quả |
 | --- | --- |
-| Backend xUnit + HTTP integration / SQLite quan hệ | 48 đạt |
-| PostgreSQL migrations + persistence | 1 bỏ qua local; CI bật bằng CAMPUSRENT_TEST_POSTGRES |
-| Frontend Vitest / Testing Library | 15 đạt |
-| Playwright desktop + mobile | 16 đạt |
+| Backend xUnit + HTTP integration | 95 đạt, không bỏ qua |
+| PostgreSQL migrations/persistence | Đạt với PostgreSQL 16 thật, schema riêng cho test |
+| Frontend Vitest / Testing Library | 21 đạt, gồm 4 ca tạo phòng từ QA |
+| Playwright desktop + mobile | 28 đạt |
+| Rà giao diện ở 320/360/390/768/1024/1440 px | 48 màn hình, không tràn ngang hoặc lỗi JavaScript sau khi tải font |
 | Vite production build | Đạt |
-| .NET 8 build / Release publish | Đạt, 0 warning build |
-| EF migration/model consistency | Không có thay đổi model chưa migrate |
-| npm audit + NuGet advisory scan | Không phát hiện advisory tại thời điểm chạy |
-| Docker Compose / CI YAML | Parse thành công; Docker chưa chạy local |
-| Published app smoke | Trang chính, deep link, API, health và cache assets đạt |
-| Published app browser smoke | Không lỗi JavaScript, không tràn ngang mobile |
+| .NET build / Docker Release publish | Đạt; build .NET không có warning |
+| EF migration/model consistency | Không có model chưa migrate; SQL export gồm ba migration |
+| Installer Linux | 7 kiểm tra đạt, gồm pipeline curl/sh/Bash và triển khai Docker thực |
+| Cập nhật installer | Hai lần rollout liên tiếp giữ dữ liệu và JWT của phiên đã có |
+| Stack local / Caddy | Compose web/db, database health, SPA deep link và Caddy config validation đạt |
+| GitHub Actions | Actionlint và ShellCheck workflow đạt |
+| npm audit / NuGet advisory scan | Không phát hiện advisory tại thời điểm kiểm tra |
 
-## Phạm vi
+## Các phần đã được kiểm tra
 
-Backend: đăng ký/đăng nhập, chuẩn hóa email, chặn tự cấp admin, JWT sai, rate limit, validation và giới hạn BCrypt Unicode; quyền sở hữu tin; tìm kiếm, giá, vị trí, dự toán; thay ảnh; đánh giá duy nhất, lọc/duyệt nội dung; báo cáo, xử lý báo cáo; yêu thích idempotent; đặt, xác nhận, hủy và đặt lại lịch; UTC; hết hạn tin; dữ liệu demo idempotent; ảnh giả và storage chưa cấu hình.
+Backend bao phủ đăng ký người tìm trọ, chặn tự cấp chủ trọ/admin, đăng nhập/JWT, chuẩn hóa email, quyền sở hữu và vai trò hiện tại, tìm kiếm/bán kính/giá/tiện ích, dự toán chi phí, đăng/sửa/ẩn/gia hạn tin, thay ảnh, đánh giá duy nhất và kiểm duyệt, báo cáo, yêu thích, đặt/xác nhận/hủy/đặt lại lịch, UTC và hết hạn tin.
 
-Frontend: API client, tiền/chi phí, card phòng, lưu phòng, form đăng nhập, chọn vai trò và modal bàn phím. E2E kiểm tra tìm/lọc phòng, trạng thái rỗng, bản đồ marker, tính chi phí, đăng nhập và giữ phiên sau reload, lưu/bỏ lưu, bảo vệ route, đăng/sửa/ẩn tin, trang quản trị, đăng ký sinh viên, đặt/hủy lịch, đánh giá/báo cáo và cập nhật hồ sơ trên desktop và mobile.
+Các ca mới kiểm tra duyệt/hạ quyền với JWT đã cấp, đổi mật khẩu và vô hiệu hóa phiên cũ, giữ ít nhất một admin, ràng buộc một yêu cầu chủ trọ PENDING trong database, tệp xác minh chỉ dành cho owner/admin, từ chối đính kèm tệp của tài khoản khác, upload ảnh local khi chưa có Cloudinary, chuẩn hóa mật khẩu đặc biệt trong connection string và xử lý timeout/cancellation của dịch vụ vị trí.
 
-Coverage dùng tests/coverage.runsettings để loại mã migration sinh tự động và Razor Views lịch sử; không coi các file này là nghiệp vụ cần unit test. E2E không được cộng vào coverage .NET. Không khẳng định độ bao phủ 100%.
+Frontend/E2E kiểm tra đăng nhập và giữ phiên, đăng ký, lưu/bỏ lưu, tìm/lọc/bản đồ/chi phí, lịch hẹn, đánh giá/báo cáo, hồ sơ, đăng/sửa/ẩn tin, quản trị, tệp ảnh/PDF riêng tư, nâng cấp chủ trọ, đổi mật khẩu và Google suggestion chưa có tọa độ. Có kiểm tra font-loaded responsive, tương phản nhãn active và điều hướng mobile. Giao diện được rà với guest, sinh viên, chủ trọ và admin.
+
+Installer được kiểm tra dưới shell POSIX và Bash với input từ terminal khi stdin chứa script; mật khẩu không xuất hiện trong output, ký tự `;`, dấu nháy, dấu `$`, `#`, `:` và backslash được giữ nguyên. Cấu hình có quyền truy cập giới hạn, các input sai được từ chối và installer không ghi secret vào checkout. Rollout thật dùng PostgreSQL/container mới riêng cho test, xác minh migrations, health và dữ liệu/phiên sau cập nhật.
+
+## Tối ưu đã đo được
+
+Các trang phụ được tải khi cần. Gói JavaScript chính giảm từ **113,77 KB xuống 44,06 KB**; gzip giảm từ **31,22 KB xuống 14,21 KB**. API/static assets có response compression. Ảnh local được giải quyết theo origin API đã cấu hình, kể cả khi frontend/backend khác port.
+
+Rà ảnh màn hình phát hiện CSS desktop ghi đè menu mobile và nhãn active có màu trùng nền. Đã sửa thứ tự CSS, bố cục header ở tablet/điện thoại nhỏ, tương phản và chiều cao card. Các kiểm tra responsive mới đã đạt ở cả hai project Playwright.
 
 ## Chạy lại
 
-- Backend: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
-- Frontend: npm --prefix client test
-- Browser: dotnet build server, sau đó npm --prefix client run test:e2e
-- Format: npm --prefix client run format:check
-- Dependency: npm --prefix client audit; dotnet list server package --vulnerable --include-transitive
+```sh
+dotnet test tests/CampusRent.Tests
+npm --prefix client test
+npm --prefix client run build
+npm --prefix client run format:check
+dotnet build server
+npm --prefix client run test:e2e
+```
 
-Test report Playwright nằm ở client/playwright-report/. Coverage nằm ở tests/CampusRent.Tests/TestResults/. Đây là output sinh tự động và được bỏ qua bởi Git.
+Test PostgreSQL cần biến `CAMPUSRENT_TEST_POSTGRES` trỏ tới database kiểm thử có quyền tạo schema; fixture tự tạo và xóa schema riêng. Tránh dùng database production. E2E có thể đặt `CAMPUSRENT_E2E_DB` và `CAMPUSRENT_E2E_UPLOADS` để cô lập dữ liệu mỗi lần chạy; Chrome đã cài được chọn bằng `PLAYWRIGHT_CHANNEL=chrome`.
 
-## Giới hạn xác minh
+Kiểm tra installer trên Linux với quyền root/sudo:
 
-Chưa chạy Docker/PostgreSQL trên máy này vì chưa cài hai dịch vụ. CI có service PostgreSQL và job build/chạy container. Chưa gọi Cloudinary thật vì không có credentials; đã kiểm tra lỗi rõ ràng khi chưa cấu hình. Ứng dụng không gửi email và không tự xác thực email trường. Chưa deploy ra máy chủ/domain công khai.
+```sh
+sudo python3 tests/deployment/test_deploy.py
+sudo python3 tests/deployment/test_deploy.py --docker
+sh -n deploy.sh
+bash -n deploy.sh
+shellcheck deploy.sh
+```
+
+Tùy chọn `--docker` tạo database/container test riêng, build và chạy installer hai lần, rồi dọn các tài nguyên của test. Cần Docker Engine, Compose v2 và kết nối Internet. ShellCheck cần được cài để chạy kiểm tra tĩnh. CI chạy cả bộ kiểm tra installer/container trước khi xuất bản image.
+
+Kiểm tra dependency và schema:
+
+```sh
+npm --prefix client audit --audit-level=moderate
+dotnet list server package --vulnerable --include-transitive
+dotnet ef migrations has-pending-model-changes --project server
+```
+
+## Báo cáo và giới hạn
+
+Playwright report nằm ở `client/playwright-report/`. Ảnh và kết quả rà thủ công nằm trong `artifacts/ui-review/`; các output này được Git bỏ qua. Coverage dùng `tests/coverage.runsettings`, loại migration sinh tự động và Razor Views lịch sử. E2E không cộng vào coverage .NET; không khẳng định coverage 100%.
+
+Chưa triển khai lên domain công khai hoặc gửi email. Chưa gọi Cloudinary/Google Places bằng credential production; luồng local, fallback và client mock đã được kiểm tra. DNS, chứng chỉ HTTPS của domain thật, credential đã được xoay và chính sách backup phải được xác minh trên máy chủ sẽ vận hành.

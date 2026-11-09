@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Heart,
@@ -17,12 +17,17 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../lib/api';
-import { PageTitle } from '../components/Common';
+import { PageTitle, Modal } from '../components/Common';
+import { DownloadLink, ProtectedImage } from '../components/Attachments';
 
 export default function AccountPage() {
-  const { user, setUser, saved, notify, logout } = useApp();
+  const { user, setUser, saved, notify, logout, refreshUser, changePassword } = useApp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const closePassword = useCallback(() => setPasswordOpen(false), []);
 
   // Landlord upgrade state
   const [requests, setRequests] = useState([]);
@@ -36,21 +41,50 @@ export default function AccountPage() {
   const [reqError, setReqError] = useState('');
   const [submittingReq, setSubmittingReq] = useState(false);
 
-  useEffect(() => {
-    if (user?.role === 'STUDENT') {
-      loadRequests();
-    }
-  }, [user?.role]);
-
-  async function loadRequests() {
+  const loadRequests = useCallback(async () => {
     setLoadingReqs(true);
     try {
       const data = await api('/landlord-requests/my');
       setRequests(data);
-    } catch {
-      // ignore
+    } catch (err) {
+      setReqError(err.message);
     } finally {
       setLoadingReqs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user?.role === 'STUDENT') loadRequests();
+  }, [user?.role, loadRequests]);
+  useEffect(() => {
+    if (!requests.some((request) => request.status === 'PENDING')) return;
+    const timer = window.setInterval(async () => {
+      await loadRequests();
+      refreshUser().catch(() => {});
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [requests, loadRequests, refreshUser]);
+
+  async function submitPassword(event) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    if (data.get('newPassword') !== data.get('confirmPassword')) {
+      setPasswordError('Hai lần nhập mật khẩu mới chưa khớp.');
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError('');
+    try {
+      await changePassword({
+        currentPassword: data.get('currentPassword'),
+        newPassword: data.get('newPassword'),
+      });
+      setPasswordOpen(false);
+      notify('Đã đổi mật khẩu. Các phiên đăng nhập khác đã hết hiệu lực.');
+    } catch (err) {
+      setPasswordError(err.message);
+    } finally {
+      setPasswordBusy(false);
     }
   }
 
@@ -267,6 +301,22 @@ export default function AccountPage() {
             </form>
           </section>
 
+          <section className="panel">
+            <h2>Bảo mật tài khoản</h2>
+            <p className="muted">
+              Đổi mật khẩu để kết thúc các phiên đăng nhập trên thiết bị khác.
+            </p>
+            <button
+              className="button outline small"
+              onClick={() => {
+                setPasswordError('');
+                setPasswordOpen(true);
+              }}
+            >
+              Đổi mật khẩu
+            </button>
+          </section>
+
           {/* Section nâng cấp thành chủ trọ dành cho người tìm trọ (STUDENT) */}
           {user.role === 'STUDENT' && (
             <section className="panel upgrade-section">
@@ -302,15 +352,14 @@ export default function AccountPage() {
                       <strong>Ảnh đính kèm ({pendingRequest.imageUrls.length}):</strong>
                       <div className="attachment-image-grid">
                         {pendingRequest.imageUrls.map((url, i) => (
-                          <a
+                          <DownloadLink
                             key={i}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            url={url}
+                            fileName={`anh-xac-minh-${i + 1}.png`}
                             className="attachment-thumb-link"
                           >
-                            <img src={url} alt={`Ảnh đính kèm ${i + 1}`} />
-                          </a>
+                            <ProtectedImage src={url} alt={`Ảnh đính kèm ${i + 1}`} />
+                          </DownloadLink>
                         ))}
                       </div>
                     </div>
@@ -320,18 +369,17 @@ export default function AccountPage() {
                   {pendingRequest.pdfUrl && (
                     <div className="attachment-group">
                       <strong>Tài liệu đính kèm (PDF):</strong>
-                      <a
-                        href={pendingRequest.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <DownloadLink
+                        url={pendingRequest.pdfUrl}
+                        fileName={pendingRequest.pdfFileName || 'tai-lieu-xac-minh.pdf'}
                         className="pdf-download-badge"
                       >
                         <FileText size={18} />
                         <div className="pdf-info">
                           <span>{pendingRequest.pdfFileName || 'Tài liệu xác thực.pdf'}</span>
-                          <small>Nhấp để xem/tải tài liệu PDF</small>
+                          <small>Tải tài liệu PDF</small>
                         </div>
-                      </a>
+                      </DownloadLink>
                     </div>
                   )}
 
@@ -392,7 +440,7 @@ export default function AccountPage() {
                       <div className="image-previews-container">
                         {imageUrls.map((url, idx) => (
                           <div className="image-preview-item" key={idx}>
-                            <img src={url} alt={`Ảnh ${idx + 1}`} />
+                            <ProtectedImage src={url} alt={`Ảnh ${idx + 1}`} />
                             <button
                               type="button"
                               className="remove-thumb-btn"
@@ -486,6 +534,52 @@ export default function AccountPage() {
           )}
         </div>
       </div>
+      {passwordOpen && (
+        <Modal title="Đổi mật khẩu" onClose={closePassword}>
+          <form className="form" onSubmit={submitPassword}>
+            <label>
+              Mật khẩu hiện tại
+              <input
+                name="currentPassword"
+                type="password"
+                required
+                maxLength={72}
+                autoComplete="current-password"
+              />
+            </label>
+            <label>
+              Mật khẩu mới
+              <input
+                name="newPassword"
+                type="password"
+                required
+                minLength={8}
+                maxLength={72}
+                autoComplete="new-password"
+              />
+            </label>
+            <label>
+              Nhập lại mật khẩu mới
+              <input
+                name="confirmPassword"
+                type="password"
+                required
+                minLength={8}
+                maxLength={72}
+                autoComplete="new-password"
+              />
+            </label>
+            {passwordError && (
+              <div className="form-error" role="alert">
+                {passwordError}
+              </div>
+            )}
+            <button className="button primary full" disabled={passwordBusy}>
+              {passwordBusy ? 'Đang lưu…' : 'Lưu mật khẩu mới'}
+            </button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

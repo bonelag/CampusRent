@@ -1,12 +1,11 @@
 name: Build & Publish Docker Image
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   packages: write
 
 jobs:
@@ -16,6 +15,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Require successful CI for manual publishing
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          result=$(gh run list --repo "$RELEASE_REPOSITORY" --workflow ci.yml --commit "$RELEASE_SHA" --status success --limit 1 --json conclusion --jq 'length')
+          test "$result" -gt 0 || { echo "Run CampusRent CI successfully for this commit before publishing."; exit 1; }
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -50,17 +59,12 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deployment Instructions Summary
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          echo "### 🚀 Docker Image Built & Published Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Lệnh kéo image về máy chủ để triển khai nhanh:**" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d -p 8080:8080 --name campusrent-app ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Markdown fences are intentional literal backticks.
+          # shellcheck disable=SC2016
+          printf 'Verified image tags:\n\n```\n%s\n```\n\n' "$IMAGE_TAGS" >> "$GITHUB_STEP_SUMMARY"
+          # shellcheck disable=SC2016
+          printf 'Installer (prompts for PostgreSQL/admin and supports HTTPS):\n\n```sh\ncurl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh | sh\n```\n' >> "$GITHUB_STEP_SUMMARY"
 

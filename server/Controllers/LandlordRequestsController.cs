@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
 
 [ApiController, Route("api/landlord-requests"), Authorize]
-public class LandlordRequestsController(CampusRentDbContext db) : ControllerBase
+public class LandlordRequestsController(CampusRentDbContext db, UploadStorage uploads) : ControllerBase
 {
     [HttpGet("my")]
     public async Task<IActionResult> MyRequests()
@@ -36,6 +36,10 @@ public class LandlordRequestsController(CampusRentDbContext db) : ControllerBase
         if (user.Role != Role.STUDENT)
             return BadRequest(ApiResponse<object>.Fail("Tài khoản của bạn đã là chủ trọ hoặc quản trị viên."));
 
+        if (dto.ImageUrls.Count > 10 || dto.ImageUrls.Any(url => !uploads.IsOwnedPrivateUrl(url, userId)) ||
+            (!string.IsNullOrWhiteSpace(dto.PdfUrl) && !uploads.IsOwnedPrivateUrl(dto.PdfUrl, userId, pdf: true)))
+            return BadRequest(ApiResponse<object>.Fail("Tệp đính kèm phải được tải lên từ tài khoản của bạn; tối đa 10 ảnh."));
+
         var hasPending = await db.LandlordRequests
             .AnyAsync(r => r.UserId == userId && r.Status == LandlordRequestStatus.PENDING);
         if (hasPending)
@@ -46,7 +50,7 @@ public class LandlordRequestsController(CampusRentDbContext db) : ControllerBase
             UserId = userId,
             Title = dto.Title.Trim(),
             Reason = dto.Reason.Trim(),
-            ImageUrls = dto.ImageUrls?.Take(10).ToList() ?? new List<string>(),
+            ImageUrls = dto.ImageUrls.Distinct().ToList(),
             PdfUrl = string.IsNullOrWhiteSpace(dto.PdfUrl) ? null : dto.PdfUrl.Trim(),
             PdfFileName = string.IsNullOrWhiteSpace(dto.PdfFileName) ? null : dto.PdfFileName.Trim(),
             Status = LandlordRequestStatus.PENDING,
@@ -55,7 +59,14 @@ public class LandlordRequestsController(CampusRentDbContext db) : ControllerBase
         };
 
         db.LandlordRequests.Add(req);
-        await db.SaveChangesAsync();
+        try { await db.SaveChangesAsync(); }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            if (await db.LandlordRequests.AnyAsync(r => r.UserId == userId && r.Status == LandlordRequestStatus.PENDING))
+                return Conflict(ApiResponse<object>.Fail("Bạn đã có yêu cầu đang chờ xét duyệt."));
+            throw;
+        }
 
         req.User = user;
         return Created($"/api/landlord-requests/{req.Id}", ApiResponse<LandlordRequestResponseDto>.Ok(Mapping.LandlordRequest(req)));

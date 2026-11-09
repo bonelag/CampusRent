@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Eye, EyeOff, List, Pencil, PlusCircle, RefreshCw } from 'lucide-react';
-import { api, fallbackImage, money } from '../lib/api';
+import { api, fallbackImage, money, mediaUrl } from '../lib/api';
 import { useApp } from '../context/AppContext';
 import { Empty, ErrorState, Loading, Modal, PageTitle } from '../components/Common';
 
@@ -111,7 +111,7 @@ export default function MyRoomsPage() {
               {rooms.map((room) => (
                 <article className="managed-room" key={room.id}>
                   <img
-                    src={room.coverImage || fallbackImage}
+                    src={mediaUrl(room.coverImage)}
                     alt=""
                     onError={(event) => {
                       event.currentTarget.onerror = null;

@@ -47,10 +47,19 @@ public class PostgresTests
                 await DbSeeder.SeedReferenceAsync(db);
                 Assert.Equal(5, await db.Universities.CountAsync());
             }
-            var registered = await client.PostAsJsonAsync("/api/auth/register", new {email="owner@example.com",password="TestPassword123!",fullName="Owner",role="LANDLORD"});
+            var registered = await client.PostAsJsonAsync("/api/auth/register", new {email="owner@example.com",password="TestPassword123!",fullName="Owner",role="STUDENT"});
             registered.EnsureSuccessStatusCode();
             var auth = JsonDocument.Parse(await registered.Content.ReadAsStringAsync()).RootElement.GetProperty("data");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",auth.GetProperty("token").GetString());
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+                var ownerId = auth.GetProperty("user").GetProperty("id").GetGuid();
+                (await db.Users.FindAsync(ownerId))!.Role = CampusRent.Server.Models.Role.LANDLORD;
+                db.LandlordRequests.Add(new() { UserId = ownerId, Title = "Verified landlord", Reason = "Persistence check", Status = CampusRent.Server.Models.LandlordRequestStatus.APPROVED });
+                await db.SaveChangesAsync();
+                Assert.Equal(1, await db.LandlordRequests.CountAsync());
+            }
             var created = await client.PostAsJsonAsync("/api/rooms",new {title="Postgres test",description="Verified on PostgreSQL",address="Hà Nội",latitude=21.005,longitude=105.843,basePrice=3200000,area=25,amenities=new[]{"wifi"},imageUrls=new[]{"https://example.com/room.jpg"}});
             created.EnsureSuccessStatusCode();
             var response = await client.GetStringAsync("/api/rooms?maxPrice=4000000&sort=price_asc");

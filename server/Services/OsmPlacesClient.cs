@@ -57,6 +57,11 @@ public sealed class OsmPlacesClient(HttpClient client, ILogger<OsmPlacesClient> 
             }
             return results;
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Photon geocode timed out");
+            return [];
+        }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
@@ -93,6 +98,11 @@ public sealed class OsmPlacesClient(HttpClient client, ILogger<OsmPlacesClient> 
 
             var full = string.Join(", ", parts);
             return string.IsNullOrWhiteSpace(full) ? null : full;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Photon reverse geocode timed out");
+            return null;
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)

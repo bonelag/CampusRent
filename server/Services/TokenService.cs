@@ -22,7 +22,8 @@ public class TokenService : ITokenService
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.FullName),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role.ToString())
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role.ToString()),
+            new System.Security.Claims.Claim("credential_version", CredentialVersion(user.Password))
         };
         var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
             issuer: _config["Jwt:Issuer"], audience: _config["Jwt:Audience"], claims: claims,
@@ -32,5 +33,8 @@ public class TokenService : ITokenService
                 Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256));
         return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public static string CredentialVersion(string passwordHash) => Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(passwordHash)));
 }
 

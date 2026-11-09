@@ -14,7 +14,7 @@ public class AuthController(CampusRentDbContext db, ITokenService tokens) : Cont
     [HttpPost("register"), EnableRateLimiting("auth")]
     public async Task<IActionResult> Register(RegisterRequestDto dto)
     {
-        if (dto.Role is not (Role.STUDENT or Role.LANDLORD)) return BadRequest(ApiResponse<object>.Fail("Vai trò đăng ký không hợp lệ."));
+        if (dto.Role != Role.STUDENT) return BadRequest(ApiResponse<object>.Fail("Tài khoản mới là người tìm trọ. Gửi yêu cầu nâng cấp để được duyệt quyền chủ trọ."));
         if (System.Text.Encoding.UTF8.GetByteCount(dto.Password) > 72) return BadRequest(ApiResponse<object>.Fail("Mật khẩu vượt quá 72 byte. Vui lòng chọn mật khẩu ngắn hơn."));
         var email = dto.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(u => u.Email == email)) return Conflict(ApiResponse<object>.Fail("Email đã được sử dụng."));
@@ -29,6 +29,8 @@ public class AuthController(CampusRentDbContext db, ITokenService tokens) : Cont
     [HttpPost("login"), EnableRateLimiting("auth")]
     public async Task<IActionResult> Login(LoginRequestDto dto)
     {
+        if (System.Text.Encoding.UTF8.GetByteCount(dto.Password) > 72)
+            return Unauthorized(ApiResponse<object>.Fail("Email hoặc mật khẩu không chính xác."));
         var email = dto.Email.Trim().ToLowerInvariant();
         var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
@@ -50,7 +52,28 @@ public class AuthController(CampusRentDbContext db, ITokenService tokens) : Cont
         await db.SaveChangesAsync();
         return Ok(ApiResponse<UserProfileDto>.Ok(Mapping.Profile(user)));
     }
+
+    [Authorize, HttpPut("password"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+    {
+        var user = await db.Users.FindAsync(User.UserId());
+        if (user == null) return Unauthorized();
+        if (System.Text.Encoding.UTF8.GetByteCount(dto.CurrentPassword) > 72 ||
+            !BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.Password))
+            return BadRequest(ApiResponse<object>.Fail("Mật khẩu hiện tại không chính xác."));
+        if (System.Text.Encoding.UTF8.GetByteCount(dto.NewPassword) > 72)
+            return BadRequest(ApiResponse<object>.Fail("Mật khẩu mới không được vượt quá 72 byte."));
+        if (dto.NewPassword == dto.CurrentPassword)
+            return BadRequest(ApiResponse<object>.Fail("Mật khẩu mới cần khác mật khẩu hiện tại."));
+        user.Password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(ApiResponse<AuthResponseDto>.Ok(new() { Token = tokens.GenerateToken(user), User = Mapping.Profile(user) }));
+    }
 }
 public record ProfileUpdate([System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(150)] string FullName, [System.ComponentModel.DataAnnotations.MaxLength(20)] string? PhoneNumber);
+public record ChangePasswordDto(
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(72)] string CurrentPassword,
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(8), System.ComponentModel.DataAnnotations.MaxLength(72)] string NewPassword);
 
 

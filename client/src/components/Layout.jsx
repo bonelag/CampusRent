@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { Loading } from './Common';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BadgeCheck,
@@ -194,7 +195,9 @@ export default function Layout() {
         </nav>
       </header>
       <main id="main-content">
-        <Outlet />
+        <Suspense fallback={<Loading />}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="footer">
         <span>© {new Date().getFullYear()} CampusRent · Hệ thống Trọ Sinh viên</span>

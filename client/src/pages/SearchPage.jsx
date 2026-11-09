@@ -132,7 +132,7 @@ export default function SearchPage() {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
       value ? next.set(key, value) : next.delete(key);
-      next.delete('page');
+      if (key !== 'page') next.delete('page');
       return next;
     });
   }
@@ -222,6 +222,7 @@ export default function SearchPage() {
 
   return (
     <div className="container search-page prototype-search">
+      <h1 className="sr-only">Tìm phòng trọ sinh viên</h1>
       <section className="search-controls">
         <form
           className="search-main-row"

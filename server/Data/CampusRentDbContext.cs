@@ -115,6 +115,8 @@ public class CampusRentDbContext : DbContext
 
             entity.HasIndex(lr => lr.UserId);
             entity.HasIndex(lr => lr.Status);
+            entity.HasIndex(lr => lr.UserId, "IX_landlord_requests_pending_user")
+                .IsUnique().HasFilter("\"status\" = 'PENDING'");
         });
     }
 }

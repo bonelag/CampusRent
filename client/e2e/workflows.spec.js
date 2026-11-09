@@ -4,7 +4,7 @@ async function login(page, email = 'nguyenvanan@sis.hust.edu.vn') {
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByLabel('Mật khẩu', { exact: true }).fill('Password@123');
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Đăng nhập', exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL('/');
 }
 test('tìm phòng, lọc và xem chi phí thực tế', async ({ page }) => {
   const errors = [];

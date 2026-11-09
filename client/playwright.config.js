@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -25,7 +26,11 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       env: {
         ASPNETCORE_ENVIRONMENT: 'Development',
-        ConnectionStrings__Sqlite: 'Data Source=campusrent.e2e.db',
+        ConnectionStrings__Sqlite: process.env.CAMPUSRENT_E2E_DB || 'Data Source=campusrent.e2e.db',
+        Uploads__RootPath:
+          process.env.CAMPUSRENT_E2E_UPLOADS ||
+          fileURLToPath(new URL('../artifacts/e2e-uploads', import.meta.url)),
+        RateLimits__AuthPermitLimit: '200',
         ClientUrl: 'http://127.0.0.1:5174',
         Logging__LogLevel__Default: 'Warning',
       },

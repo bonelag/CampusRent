@@ -12,7 +12,7 @@ import {
   Wallet,
   ListChecks,
 } from 'lucide-react';
-import { api, amenities, estimateCost, money } from '../lib/api';
+import { api, amenities, estimateCost, money, mediaUrl } from '../lib/api';
 import { useApp } from '../context/AppContext';
 import { PageTitle, Loading, ErrorState } from '../components/Common';
 import LocationPickerMap from '../components/LocationPickerMap';
@@ -352,7 +352,7 @@ export default function PostRoomPage() {
             <div className="post-images">
               {form.imageUrls.map((image, i) => (
                 <div key={i}>
-                  <img src={image} alt={'Ảnh phòng ' + (i + 1)} />
+                  <img src={mediaUrl(image)} alt={'Ảnh phòng ' + (i + 1)} />
                   {i === 0 && <span>Ảnh bìa</span>}
                   <button
                     type="button"

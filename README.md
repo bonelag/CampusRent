@@ -7,9 +7,10 @@ Nền tảng tìm phòng trọ sinh viên theo trường đại học. React 18 
 - Tìm kiếm theo từ khóa, trường, giá, tiện ích, bán kính; sắp xếp và phân trang. Ô vị trí gợi ý tức thời, chọn gợi ý sẽ đặt tâm bản đồ và cập nhật các phòng ở gần đó.
 - Danh sách và bản đồ Leaflet; ảnh, thông tin chủ trọ, chi phí minh bạch.
 - Dự toán tiền thuê + điện + nước + Internet + dịch vụ theo mức sử dụng.
-- Đăng ký sinh viên/chủ trọ, đăng nhập JWT, cập nhật hồ sơ.
+- Đăng ký người tìm trọ, đăng nhập JWT, cập nhật hồ sơ và đổi mật khẩu; gửi hồ sơ nâng cấp chủ trọ để admin duyệt.
 - Lưu phòng, đặt lịch xem, chủ trọ xác nhận, hủy lịch.
-- Chủ trọ đăng/sửa/ẩn tin, đánh dấu đã thuê, gia hạn 30 ngày; upload Cloudinary hoặc URL HTTPS.
+- Chủ trọ đăng/sửa/ẩn tin, đánh dấu đã thuê, gia hạn 30 ngày; upload ảnh vào storage local/Cloudinary hoặc dùng URL HTTPS.
+- Hồ sơ xác minh có ảnh/PDF riêng tư, chỉ người gửi và admin truy cập được.
 - Đánh giá một lần/phòng, lọc từ cấm, báo cáo tin/đánh giá và quản trị kiểm duyệt.
 - Tự ẩn tin hết hạn, kiểm soát quyền sở hữu và vai trò, validation, rate limit.
 
@@ -46,7 +47,7 @@ Development tự tạo `server/campusrent.db`, 5 trường, 5 phòng và tài kh
 | Chủ trọ | landlord1@gmail.com | Password@123 |
 | Quản trị | admin@campusrent.vn | Password@123 |
 
-Các tài khoản này chỉ được seed trong Development. Production dùng admin được cấu hình riêng bằng biến môi trường.
+Các tài khoản này chỉ được seed trong Development. Production dùng admin được cấu hình riêng bằng installer hoặc biến môi trường.
 
 ## Kiểm thử
 
@@ -66,7 +67,13 @@ Test backend dùng SQLite quan hệ thật và cơ sở dữ liệu riêng cho t
 
 ## Triển khai
 
-Đọc [hướng dẫn triển khai](docs/DEPLOYMENT.md). Có Dockerfile nhiều giai đoạn, Compose với PostgreSQL, migration chạy trước ứng dụng, healthcheck và GitHub Actions CI. Cần điền secret, cấu hình domain/HTTPS và chạy kiểm tra PostgreSQL/container trên môi trường deploy trước khi công khai.
+Đọc [hướng dẫn triển khai](docs/DEPLOYMENT.md). `deploy.sh` cài Docker trên Ubuntu/Debian, hỏi PostgreSQL và admin từ terminal, tạo JWT secret, chạy migration/healthcheck và thiết lập HTTPS qua Caddy khi có tên miền. `compose.production.yaml` dùng PostgreSQL có sẵn; `compose.yaml` dành cho stack local có database riêng. Dữ liệu tải lên và cấu hình được giữ khi chạy lại installer.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh | sh
+```
+
+URL trên dùng được sau khi các thay đổi được đưa lên `main`. Từ checkout Linux hiện tại, chạy `CAMPUSRENT_SOURCE_DIR="$PWD" sh deploy.sh`. Kết quả kiểm tra gần nhất nằm trong [TESTING.md](docs/TESTING.md).
 
 Migration chuẩn nằm trong `server/Migrations/`; `db.sql` và Razor Views là tài liệu/khung giao diện lịch sử, không được dùng bởi ứng dụng React hiện tại.
 

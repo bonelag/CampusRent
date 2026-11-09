@@ -11,7 +11,8 @@ const { apiMock, notifyMock } = vi.hoisted(() => ({
 }));
 
 // Giả lập API.
-vi.mock('../lib/api', () => ({
+vi.mock('../lib/api', async (importOriginal) => ({
+  ...(await importOriginal()),
   api: apiMock,
   amenities: {},
   estimateCost: () => 3500000,

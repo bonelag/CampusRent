@@ -15,8 +15,8 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     private readonly string path = Path.Combine(Path.GetTempPath(), $"campusrent-{Guid.NewGuid()}.db");
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Testing")
-        .ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:Sqlite"] = $"Data Source={path}", ["Database:Provider"] = "Sqlite" }));
-    protected override void Dispose(bool disposing) { base.Dispose(disposing); Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); }
+        .ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:Sqlite"] = $"Data Source={path}", ["Database:Provider"] = "Sqlite", ["Uploads:RootPath"] = path + ".uploads" }));
+    protected override void Dispose(bool disposing) { base.Dispose(disposing); Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (File.Exists(path)) File.Delete(path); if (Directory.Exists(path + ".uploads")) Directory.Delete(path + ".uploads", true); }
 }
 public class ApiTests : IDisposable
 {
@@ -32,9 +32,18 @@ public class ApiTests : IDisposable
     }
     private async Task<Guid> Register(string role = "STUDENT", string? email = null)
     {
-        var data = await Data(await client.PostAsJsonAsync("/api/auth/register", new { email = email ?? $"{Guid.NewGuid()}@example.com", password = "TestPass123!", fullName = "Test User", role }));
+        var data = await Data(await client.PostAsJsonAsync("/api/auth/register", new { email = email ?? $"{Guid.NewGuid()}@example.com", password = "TestPass123!", fullName = "Test User", role = "STUDENT" }));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GetProperty("token").GetString());
-        return data.GetProperty("user").GetProperty("id").GetGuid();
+        var id = data.GetProperty("user").GetProperty("id").GetGuid();
+        if (role != "STUDENT")
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+            var account = (await db.Users.FindAsync(id))!;
+            account.Role = Enum.Parse<Role>(role);
+            await db.SaveChangesAsync();
+        }
+        return id;
     }
     private object RoomPayload(object? overrides = null) => new { title = "Studio gần trường đại học", description = "Phòng đầy đủ tiện nghi", address = "15 Tạ Quang Bửu, Hà Nội", latitude = 21.005, longitude = 105.843, basePrice = 3200000, electricPrice = 3800, waterPrice = 30000, internetPrice = 100000, otherFee = 50000, area = 25, maxPeople = 2, amenities = new[] { "wifi", "ac" }, imageUrls = new[] { "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800" } };
     private async Task<Guid> Room()
@@ -295,12 +304,14 @@ public class ApiTests : IDisposable
         Assert.Equal(5,stats.GetProperty("availableRooms").GetInt32());
         Assert.Equal(0,(await Data(await client.GetAsync("/api/admin/reports"))).GetArrayLength());
     }
-    [Fact] public async Task ValidImageWithoutStorageConfigurationFailsClearly()
+    [Fact] public async Task ValidListingImageWithoutCloudinaryUsesPersistentLocalStorage()
     {
         await Register("LANDLORD");
         using var content=new MultipartFormDataContent();
         content.Add(new ByteArrayContent(new byte[]{137,80,78,71,13,10,26,10,0,0,0,0}),"file","image.png");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable,(await client.PostAsync("/api/images",content)).StatusCode);
+        var image = await Data(await client.PostAsync("/api/images", content));
+        Assert.StartsWith("/uploads/images/", image.GetProperty("url").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(image.GetProperty("url").GetString())).StatusCode);
     }
     [Fact] public async Task StudentCanSubmitLandlordUpgradeRequestAndAdminCanApprove()
     {
@@ -309,9 +320,7 @@ public class ApiTests : IDisposable
         {
             title = "Đăng ký làm chủ trọ khu vực Bách Khoa",
             reason = "Tôi có dãy 5 phòng trọ cho sinh viên thuê tại Tạ Quang Bửu, cần đăng tin.",
-            imageUrls = new[] { "https://example.com/room1.jpg" },
-            pdfUrl = "/uploads/documents/giay_to_nha_dat.pdf",
-            pdfFileName = "giay_to_nha_dat.pdf"
+            imageUrls = Array.Empty<string>()
         };
         var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", reqPayload));
         var reqId = created.GetProperty("id").GetGuid();

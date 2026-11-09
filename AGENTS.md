@@ -1,0 +1,4 @@
+- Read `@MEMORY.md` in current project for context.
+- Everything you do must be recorded in `@MEMORY.md` in English (do not include routine chat history; record only technical reports, code modifications, logic, workflows, etc.).
+- When responding to users, please reply in Vietnamese.
+- When compressing the session (summarizing the content), output the entire content strictly in English.

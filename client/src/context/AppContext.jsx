@@ -20,6 +20,17 @@ export function AppProvider({ children }) {
     if (sessionStorage.getItem('campusrent-token')) setSaved(await api('/favorites'));
     else setSaved([]);
   }, []);
+  const refreshUser = useCallback(async () => {
+    if (!sessionStorage.getItem('campusrent-token')) return null;
+    const next = await api('/auth/me');
+    setUser(next);
+    return next;
+  }, []);
+  useEffect(() => {
+    const refresh = () => refreshUser().catch(() => {});
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [refreshUser]);
   useEffect(() => {
     const clear = () => {
       setUser(null);
@@ -40,8 +51,13 @@ export function AppProvider({ children }) {
     const result = await api('/auth/' + path, { method: 'POST', body });
     sessionStorage.setItem('campusrent-token', result.token);
     setUser(result.user);
-    await refreshSaved();
+    await refreshSaved().catch(() => setSaved([]));
     return result.user;
+  }
+  async function changePassword(body) {
+    const result = await api('/auth/password', { method: 'PUT', body });
+    sessionStorage.setItem('campusrent-token', result.token);
+    setUser(result.user);
   }
   function logout() {
     sessionStorage.removeItem('campusrent-token');
@@ -63,6 +79,8 @@ export function AppProvider({ children }) {
         authLoading,
         saved,
         refreshSaved,
+        refreshUser,
+        changePassword,
         authenticate,
         logout,
         toggleSave,

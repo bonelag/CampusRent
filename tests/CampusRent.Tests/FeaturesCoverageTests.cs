@@ -42,10 +42,19 @@ public class FeaturesCoverageTests : IDisposable
             email = email ?? $"{Guid.NewGuid()}@example.com",
             password = "TestPass123!",
             fullName = "Test User",
-            role
+            role = "STUDENT"
         }));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GetProperty("token").GetString());
-        return data.GetProperty("user").GetProperty("id").GetGuid();
+        var id = data.GetProperty("user").GetProperty("id").GetGuid();
+        if (role != "STUDENT")
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
+            var account = (await db.Users.FindAsync(id))!;
+            account.Role = Enum.Parse<Role>(role);
+            await db.SaveChangesAsync();
+        }
+        return id;
     }
 
     private async Task Admin()
@@ -114,7 +123,7 @@ public class FeaturesCoverageTests : IDisposable
         {
             title = "Yêu cầu nâng cấp tài khoản",
             reason = "Có nhà trọ cho sinh viên thuê",
-            imageUrls = new[] { "https://example.com/landlord1.jpg" }
+            imageUrls = Array.Empty<string>()
         };
         var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", reqPayload));
         var reqId = created.GetProperty("id").GetGuid();
@@ -633,7 +642,7 @@ public class FeaturesCoverageTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadImageFallbackToLocalOnValidPng()
+    public async Task VerificationImageIsStoredUnderAuthenticatedFileEndpoint()
     {
         await Register("LANDLORD");
         using var content = new MultipartFormDataContent();
@@ -646,7 +655,7 @@ public class FeaturesCoverageTests : IDisposable
         var data = await Data(response);
         var url = data.GetProperty("url").GetString();
         Assert.NotNull(url);
-        Assert.StartsWith("/uploads/images/", url);
+        Assert.StartsWith("/api/uploads/files/", url);
         Assert.EndsWith(".png", url);
     }
 

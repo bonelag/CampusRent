@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Heart, MapPin, Star, Navigation } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { money, fallbackImage } from '../lib/api';
+import { money, fallbackImage, mediaUrl } from '../lib/api';
 export default function RoomCard({ room, horizontal = false }) {
   const { saved, user, toggleSave, notify } = useApp();
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,7 @@ export default function RoomCard({ room, horizontal = false }) {
         aria-hidden="true"
       >
         <img
-          src={room.coverImage || fallbackImage}
+          src={mediaUrl(room.coverImage)}
           alt=""
           loading="lazy"
           onError={(e) => {

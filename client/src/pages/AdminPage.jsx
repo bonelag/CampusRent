@@ -21,6 +21,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { api } from '../lib/api';
 import { PageTitle, Loading, Empty, ErrorState, Modal } from '../components/Common';
+import { DownloadLink, ProtectedImage } from '../components/Attachments';
 
 export default function AdminPage() {
   const { notify } = useApp();
@@ -422,16 +423,15 @@ export default function AdminPage() {
                             </span>
                             <div className="admin-thumb-grid">
                               {r.imageUrls.map((url, i) => (
-                                <a
+                                <DownloadLink
                                   key={i}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  url={url}
+                                  fileName={`anh-xac-minh-${i + 1}.png`}
                                   className="admin-thumb-link"
                                   title="Xem ảnh kích thước đầy đủ"
                                 >
-                                  <img src={url} alt={`Ảnh ${i + 1}`} />
-                                </a>
+                                  <ProtectedImage src={url} alt={`Ảnh ${i + 1}`} />
+                                </DownloadLink>
                               ))}
                             </div>
                           </div>
@@ -441,20 +441,19 @@ export default function AdminPage() {
                         {r.pdfUrl && (
                           <div className="request-attachments-section">
                             <span className="attachment-label">Tài liệu đính kèm (PDF):</span>
-                            <a
-                              href={r.pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <DownloadLink
+                              url={r.pdfUrl}
+                              fileName={r.pdfFileName || 'tai-lieu-xac-minh.pdf'}
                               className="admin-pdf-card"
                             >
                               <FileText size={20} className="pdf-icon" />
                               <div className="admin-pdf-meta">
                                 <strong>{r.pdfFileName || 'Giấy tờ xác minh.pdf'}</strong>
                                 <small>
-                                  Mở xem tài liệu PDF <ExternalLink size={12} />
+                                  Tải tài liệu PDF <ExternalLink size={12} />
                                 </small>
                               </div>
-                            </a>
+                            </DownloadLink>
                           </div>
                         )}
 

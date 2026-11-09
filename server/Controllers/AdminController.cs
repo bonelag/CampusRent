@@ -125,8 +125,11 @@ public class AdminController(CampusRentDbContext db) : ControllerBase
     [HttpPut("users/{id:guid}")]
     public async Task<IActionResult> UpdateUser(Guid id, AdminUpdateUserDto dto)
     {
+        if (!Enum.IsDefined(dto.Role)) return BadRequest(ApiResponse<object>.Fail("Vai trò không hợp lệ."));
         var user = await db.Users.FindAsync(id);
         if (user == null) return NotFound(ApiResponse<object>.Fail("Không tìm thấy người dùng."));
+        if (user.Role == Role.ADMIN && dto.Role != Role.ADMIN && await db.Users.CountAsync(u => u.Role == Role.ADMIN) <= 1)
+            return Conflict(ApiResponse<object>.Fail("Cần giữ ít nhất một quản trị viên trong hệ thống."));
 
         user.FullName = dto.FullName.Trim();
         user.PhoneNumber = dto.PhoneNumber?.Trim();

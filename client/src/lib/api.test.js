@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { api, estimateCost, money, shortPrice } from './api';
+import { api, estimateCost, money, shortPrice, fetchFile } from './api';
 afterEach(() => vi.unstubAllGlobals());
 describe('Chi phí và định dạng', () => {
   const room = {
@@ -14,6 +14,24 @@ describe('Chi phí và định dạng', () => {
   it('định dạng tiền Việt', () => {
     expect(money(3200000)).toContain('3.200.000');
     expect(shortPrice(3200000)).toBe('3,2');
+  });
+});
+describe('Tệp xác minh', () => {
+  it('tải tệp riêng bằng JWT', async () => {
+    sessionStorage.setItem('campusrent-token', 'proof-token');
+    const blob = new Blob(['document']);
+    const fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, blob: async () => blob });
+    vi.stubGlobal('fetch', fetch);
+    expect(await fetchFile('/api/uploads/files/owner/document.pdf')).toBe(blob);
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer proof-token');
+  });
+  it('không gửi JWT đến website khác qua liên kết tệp', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    await expect(
+      fetchFile('https://outside.example.com/uploads/documents/file.pdf')
+    ).rejects.toThrow('Đường dẫn tệp không hợp lệ');
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 describe('API client', () => {

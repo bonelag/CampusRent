@@ -3,6 +3,7 @@ name: CampusRent CI
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -46,7 +47,7 @@ jobs:
       - name: Run Backend Tests (xUnit with coverage)
         run: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
         env:
-          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password;SSL Mode=Disable;Trust Server Certificate=true;
+          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password;SSL Mode=Disable;
 
       - name: Check EF Core Migrations
         run: dotnet ef migrations has-pending-model-changes --project server --no-build
@@ -99,6 +100,9 @@ jobs:
       - name: Build Local Docker Image
         run: docker build -t campusrent:latest .
 
+      - name: Validate installer with PostgreSQL and repeated deployment
+        run: sudo python3 tests/deployment/test_deploy.py --docker
+
       - name: Validate Compose and exercise production startup
         env:
           POSTGRES_PASSWORD: ci-only-database-password
@@ -107,16 +111,7 @@ jobs:
           ADMIN_PASSWORD: ci-only-admin-password
         run: |
           docker compose config --quiet
-          docker compose up -d --no-build
-          echo "Waiting for web service to become healthy..."
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8080/health > /dev/null 2>&1; then
-              echo "Web container is healthy and responding!"
-              break
-            fi
-            echo "Waiting for startup ($i/30)..."
-            sleep 2
-          done
+          docker compose up -d --no-build --wait --wait-timeout 180
           curl --fail http://localhost:8080/health
           curl --fail http://localhost:8080/
           curl --fail http://localhost:8080/api/universities
@@ -129,3 +124,22 @@ jobs:
           JWT_SECRET: ci-only-generated-secret-more-than-32-bytes
           ADMIN_EMAIL: admin@ci.example.com
           ADMIN_PASSWORD: ci-only-admin-password
+
+      - name: Stop test stack
+        if: always()
+        run: docker compose down --volumes
+        env:
+          POSTGRES_PASSWORD: ci-only-database-password
+          JWT_SECRET: ci-only-generated-secret-more-than-32-bytes
+          ADMIN_EMAIL: admin@ci.example.com
+          ADMIN_PASSWORD: ci-only-admin-password
+
+  publish:
+    name: Publish verified image
+    needs: [test, container]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    uses: ./.github/workflows/docker-publish.yml

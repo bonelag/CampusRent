@@ -135,6 +135,10 @@ namespace CampusRent.Server.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex(new[] { "UserId" }, "IX_landlord_requests_pending_user")
+                        .IsUnique()
+                        .HasFilter("\"status\" = 'PENDING'");
+
                     b.ToTable("landlord_requests");
                 });
 

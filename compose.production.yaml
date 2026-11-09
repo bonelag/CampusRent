@@ -1,0 +1,78 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${CAMPUSRENT_IMAGE:-campusrent:production}
+    restart: unless-stopped
+    init: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Provider: Postgres
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - uploads_data:/app/uploads
+      - type: bind
+        source: ${CAMPUSRENT_CONFIG_FILE:?Run deploy.sh or provide the production configuration file}
+        target: /app/appsettings.Production.json
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - campus
+    healthcheck:
+      test: ["CMD", "dotnet", "CampusRent.Server.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 6s
+      start_period: 30s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      CAMPUSRENT_DOMAIN: ${CAMPUSRENT_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - campus
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  campus:
+    external: true
+    name: ${CAMPUSRENT_NETWORK_NAME:-campusrent_network}
+
+volumes:
+  uploads_data:
+  caddy_data:
+  caddy_config:

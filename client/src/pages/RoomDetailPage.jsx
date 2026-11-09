@@ -22,7 +22,7 @@ import {
   Minus,
   Image,
 } from 'lucide-react';
-import { api, money, amenities, estimateCost, fallbackImage } from '../lib/api';
+import { api, money, amenities, estimateCost, fallbackImage, mediaUrl } from '../lib/api';
 import { useApp } from '../context/AppContext';
 import { Loading, ErrorState, Modal } from '../components/Common';
 import RoomMap from '../components/RoomMap';
@@ -91,7 +91,7 @@ export default function RoomDetailPage() {
   if (!room) return <Loading />;
   const total = estimateCost(room, kwh, water),
     isSaved = saved.some((r) => r.id === id),
-    images = room.images.length ? room.images : [fallbackImage];
+    images = (room.images.length ? room.images : [fallbackImage]).map(mediaUrl);
   return (
     <div className="container detail-page">
       <div className="detail-top">
