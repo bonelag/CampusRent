@@ -2,6 +2,8 @@
 
 Kiểm tra tại workspace ngày 10/11/2026 (Asia/Saigon), với .NET SDK 8.0.426, Node.js 22.23.4, Chrome và Docker/Compose trong Ubuntu 22.04 WSL.
 
+GitHub Actions dùng runner cố định `ubuntu-24.04`, tương thích Playwright 1.58.2. Không dùng `ubuntu-latest` vì nhãn này có thể chuyển sang Ubuntu 26.04, khiến bước cài Chromium/dependencies thất bại trước khi E2E chạy.
+
 | Nhóm | Kết quả |
 | --- | --- |
 | Backend xUnit + HTTP integration | 95 đạt, không bỏ qua |
