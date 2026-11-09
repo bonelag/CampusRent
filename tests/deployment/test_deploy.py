@@ -177,17 +177,24 @@ class InstallerTests(unittest.TestCase):
         subnet = '172.29.252.0/24'
 
         def docker(*args, **kwargs):
-            return subprocess.run(['docker', *args], check=True, capture_output=True, text=True, **kwargs)
+            result = subprocess.run(['docker', *args], capture_output=True, text=True, **kwargs)
+            if result.returncode:
+                self.fail(f'Docker operation failed ({args[0]}):\n{result.stderr or result.stdout}')
+            return result
 
         docker('network', 'create', '--subnet', subnet, network)
         try:
             docker('run', '-d', '--name', pg, '--network', network,
                    '-e', 'POSTGRES_PASSWORD=installer-root-test-only', 'postgres:16-alpine')
-            for _ in range(60):
-                ready = subprocess.run(['docker', 'exec', pg, 'pg_isready', '-U', 'postgres'], capture_output=True)
+            # The image's temporary initialization server accepts Unix sockets before restarting.
+            # TCP readiness only succeeds once the final server is running.
+            for _ in range(120):
+                ready = subprocess.run(['docker', 'exec', pg, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], capture_output=True)
                 if ready.returncode == 0:
                     break
                 time.sleep(.5)
+            else:
+                self.fail('PostgreSQL did not become ready on TCP within 60 seconds.')
             sql_password = self.password.replace("'", "''")
             sql = f"CREATE ROLE owner LOGIN PASSWORD '{sql_password}';\nCREATE DATABASE campusrent OWNER owner;\n"
             docker('exec', '-i', pg, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', input=sql)
