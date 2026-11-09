@@ -22,6 +22,8 @@ GitHub Actions dùng runner cố định `ubuntu-24.04`, tương thích Playwrig
 
 ## Các phần đã được kiểm tra
 
+Bộ xUnit được chia theo trách nhiệm thành 62 file C#; file lớn nhất là 96 dòng. Fixture/helper nằm trong `Infrastructure/`, các ca kiểm thử nằm trong thư mục chức năng và class có tên trùng file. Xem [hướng dẫn tổ chức backend tests](../tests/CampusRent.Tests/README.md). Toàn bộ 95 ca, gồm dữ liệu Theory, đã được đối chiếu và chạy lại với SQLite/PostgreSQL sau khi tách.
+
 Backend bao phủ đăng ký người tìm trọ, chặn tự cấp chủ trọ/admin, đăng nhập/JWT, chuẩn hóa email, quyền sở hữu và vai trò hiện tại, tìm kiếm/bán kính/giá/tiện ích, dự toán chi phí, đăng/sửa/ẩn/gia hạn tin, thay ảnh, đánh giá duy nhất và kiểm duyệt, báo cáo, yêu thích, đặt/xác nhận/hủy/đặt lại lịch, UTC và hết hạn tin.
 
 Các ca mới kiểm tra duyệt/hạ quyền với JWT đã cấp, đổi mật khẩu và vô hiệu hóa phiên cũ, giữ ít nhất một admin, ràng buộc một yêu cầu chủ trọ PENDING trong database, tệp xác minh chỉ dành cho owner/admin, từ chối đính kèm tệp của tài khoản khác, upload ảnh local khi chưa có Cloudinary, chuẩn hóa mật khẩu đặc biệt trong connection string và xử lý timeout/cancellation của dịch vụ vị trí.
