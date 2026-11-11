@@ -71,6 +71,14 @@ dotnet list server package --vulnerable --include-transitive
 dotnet ef migrations has-pending-model-changes --project server
 ```
 
+## Bổ sung ngày 11/11/2026: proxy Nginx đã có
+
+- Bộ kiểm tra installer Linux đạt **10/10**, gồm curl/sh/Bash, ShellCheck, chọn `caddy`/`external`, giữ lựa chọn proxy/JWT/credential khi chạy lại, tương thích cấu hình cũ và từ chối proxy/input không hợp lệ.
+- Rollout Docker/PostgreSQL thật được chạy hai lần cho mỗi chế độ HTTP và proxy `external`, giữ dữ liệu/tài khoản/JWT. Chế độ `external` chỉ xác nhận backend, không công bố HTTPS đã hoạt động khi Nginx chưa được cấu hình.
+- Ca external được chạy thêm với container Caddy ở trạng thái Created và đang chạy thuộc cùng project; cả hai được dừng trong khi backend và phiên đã có vẫn hoạt động.
+- Mẫu `docs/nginx/campusrent.conf` đạt `nginx -t` trong container Nginx Alpine. Mẫu chuyển tiếp về loopback, giữ Host/forwarded headers và cho phép request 20 MB để upload ảnh/PDF.
+- Các kiểm tra backend/frontend/E2E phía trên là kết quả ngày 10/11; lần sửa installer này không chạy lại các bộ đó. Nginx/DNS/chứng chỉ trên VPS thực tế cần kiểm tra bằng lệnh trong hướng dẫn triển khai.
+
 ## Báo cáo và giới hạn
 
 Playwright report nằm ở `client/playwright-report/`. Ảnh và kết quả rà thủ công nằm trong `artifacts/ui-review/`; các output này được Git bỏ qua. Coverage dùng `tests/coverage.runsettings`, loại migration sinh tự động và Razor Views lịch sử. E2E không cộng vào coverage .NET; không khẳng định coverage 100%.

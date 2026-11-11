@@ -88,9 +88,37 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertEqual(original, self.config())
 
+    def test_switch_to_external_proxy_preserves_configuration_and_is_reused(self):
+        self.assertEqual(0, self.configure().returncode)
+        original = self.config()
+        pgpass = (self.install / 'runtime/pgpass').read_bytes()
+        result = self.configure(CAMPUSRENT_PROXY='external')
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(original, self.config())
+        self.assertEqual(pgpass, (self.install / 'runtime/pgpass').read_bytes())
+        env_text = (self.install / 'runtime/deploy.env').read_text()
+        self.assertIn('CAMPUSRENT_PROXY=external\n', env_text)
+        self.assertIn('WEB_BIND=127.0.0.1\n', env_text)
+        self.assertEqual(0, self.configure().returncode)
+        self.assertEqual(original, self.config())
+        self.assertEqual(env_text, (self.install / 'runtime/deploy.env').read_text())
+
+    def test_legacy_configuration_keeps_caddy_and_credentials(self):
+        self.assertEqual(0, self.configure().returncode)
+        original = self.config()
+        path = self.install / 'runtime/deploy.env'
+        path.write_text(''.join(line for line in path.read_text().splitlines(keepends=True)
+                                if not line.startswith('CAMPUSRENT_PROXY=')))
+        result = self.configure()
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(original, self.config())
+        self.assertIn('CAMPUSRENT_PROXY=caddy\n', path.read_text())
+
     def test_invalid_input_stops_before_config_is_written(self):
         for changes in ({'CAMPUSRENT_DB_PASSWORD': ''}, {'CAMPUSRENT_DOMAIN': 'example.com { malicious }'},
-                        {'CAMPUSRENT_PORT': '80'}, {'CAMPUSRENT_ADMIN_PASSWORD': 'short'}):
+                        {'CAMPUSRENT_PORT': '80'}, {'CAMPUSRENT_ADMIN_PASSWORD': 'short'},
+                        {'CAMPUSRENT_PROXY': 'invalid'},
+                        {'CAMPUSRENT_PROXY': 'external', 'CAMPUSRENT_DOMAIN': ''}):
             result = self.configure(**changes)
             self.assertNotEqual(0, result.returncode)
             self.assertFalse((self.install / 'runtime/appsettings.Production.json').exists())
@@ -131,7 +159,8 @@ class InstallerTests(unittest.TestCase):
                 prompts = [(b'PostgreSQL host', 'database.example.com'), (b'PostgreSQL port', '5432'),
                            (b'Database name', 'campusrent'), (b'Database username', 'owner'),
                            (b'Database password:', self.password), (b'SSL:', 'VerifyFull'),
-                           (b'Ten mien', 'campusrent.example.com'), (b'Cong HTTP', '58080'),
+                           (b'Ten mien', 'campusrent.example.com'), (b'HTTPS proxy:', 'caddy'),
+                           (b'Cong HTTP', '58080'),
                            (b'Admin email', 'admin@example.com'), (b'Admin password', self.admin_password)]
                 output = b''
                 step = 0
@@ -160,7 +189,7 @@ class InstallerTests(unittest.TestCase):
                 finally:
                     os.close(fd)
                 text = output.decode(errors='replace')
-                self.assertEqual(10, step, text)
+                self.assertEqual(11, step, text)
                 self.assertEqual(0, os.waitstatus_to_exitcode(status), text)
                 self.assertNotIn(self.password, text)
                 self.assertNotIn(self.admin_password, text)
@@ -172,6 +201,13 @@ class InstallerTests(unittest.TestCase):
 
     @unittest.skipUnless(DOCKER, 'Use --docker for real PostgreSQL/container rollout')
     def test_full_docker_rollout_and_repeat_keep_data_and_sessions(self):
+        self.docker_rollout()
+
+    @unittest.skipUnless(DOCKER, 'Use --docker for real PostgreSQL/container rollout')
+    def test_external_proxy_rollout_and_repeat_keep_data_and_sessions(self):
+        self.docker_rollout(domain='campusrent.example.com', proxy='external')
+
+    def docker_rollout(self, domain='', proxy='caddy'):
         project = 'campusrent-check-' + self.workspace.name.rsplit('-', 1)[-1].lower()
         network, pg = project + '_network', project + '-pg'
         subnet = '172.29.252.0/24'
@@ -202,7 +238,8 @@ class InstallerTests(unittest.TestCase):
                 sock.bind(('127.0.0.1', 0))
                 port = sock.getsockname()[1]
             env = dict(self.env, CAMPUSRENT_DB_HOST=pg, CAMPUSRENT_DB_SSL='Disable',
-                       CAMPUSRENT_DOMAIN='', CAMPUSRENT_PORT=str(port), CAMPUSRENT_PROJECT=project,
+                       CAMPUSRENT_DOMAIN=domain, CAMPUSRENT_PROXY=proxy,
+                       CAMPUSRENT_PORT=str(port), CAMPUSRENT_PROJECT=project,
                        CAMPUSRENT_NETWORK_CIDR=subnet)
             command = ['sh', str(INSTALLER), '--non-interactive']
             for attempt in range(2):
@@ -213,12 +250,32 @@ class InstallerTests(unittest.TestCase):
                 url = f'http://127.0.0.1:{port}'
                 with urllib.request.urlopen(url + '/health') as response:
                     self.assertEqual(200, response.status)
+                if proxy == 'external':
+                    self.assertEqual('https://' + domain, config['ClientUrl'])
+                    self.assertIn('CampusRent backend is healthy:', result.stdout)
+                    self.assertNotIn('CampusRent is healthy: https://', result.stdout)
+                    caddy_ids = docker('ps', '-aq', '--filter', f'label=com.docker.compose.project={project}',
+                                       '--filter', 'label=com.docker.compose.service=caddy').stdout.split()
+                    for caddy_id in caddy_ids:
+                        self.assertEqual('false', docker('inspect', '--format', '{{.State.Running}}', caddy_id).stdout.strip())
                 if attempt == 0:
                     jwt = config['Jwt']['Secret']
                     body = json.dumps({'email': 'persist@example.com', 'password': 'PersistPassword123!', 'fullName': 'Persisted student', 'role': 'STUDENT'}).encode()
                     req = urllib.request.Request(url + '/api/auth/register', body, {'Content-Type': 'application/json'})
                     with urllib.request.urlopen(req) as response:
                         token = json.load(response)['data']['token']
+                    if proxy == 'external':
+                        # Reproduce the retained Caddy container after a failed first HTTPS deployment.
+                        docker('compose', '--project-name', project, '--env-file', str(self.install / 'runtime/deploy.env'),
+                               '-f', str(self.install / 'current/compose.production.yaml'), '--profile', 'https',
+                               'create', '--no-build', 'caddy')
+                        running_caddy = docker('run', '-d', '--init', '--name', project + '-running-caddy',
+                                               '--label', f'com.docker.compose.project={project}',
+                                               '--label', 'com.docker.compose.service=caddy',
+                                               '--label', 'com.docker.compose.oneoff=False',
+                                               '--label', 'com.docker.compose.config-hash=external-proxy-test',
+                                               '--entrypoint', 'sleep', 'caddy:2-alpine', '300').stdout.strip()
+                        self.assertEqual('true', docker('inspect', '--format', '{{.State.Running}}', running_caddy).stdout.strip())
                 else:
                     self.assertEqual(jwt, config['Jwt']['Secret'])
                     req = urllib.request.Request(url + '/api/auth/me', headers={'Authorization': 'Bearer ' + token})
@@ -228,7 +285,8 @@ class InstallerTests(unittest.TestCase):
             env_file = self.install / 'runtime/deploy.env'
             current = self.install / 'current/compose.production.yaml'
             if env_file.exists() and current.exists():
-                subprocess.run(['docker', 'compose', '--project-name', project, '--env-file', str(env_file), '-f', str(current), 'down', '--volumes'], capture_output=True)
+                subprocess.run(['docker', 'compose', '--project-name', project, '--env-file', str(env_file), '-f', str(current),
+                                '--profile', 'https', 'down', '--volumes'], capture_output=True)
             subprocess.run(['docker', 'rm', '-fv', pg], capture_output=True)
             subprocess.run(['docker', 'network', 'rm', network], capture_output=True)
 

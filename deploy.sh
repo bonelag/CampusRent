@@ -20,9 +20,11 @@ Optional: CAMPUSRENT_SOURCE_DIR=/path/to/checkout (otherwise download GitHub mai
           CAMPUSRENT_GITHUB_CURL_CONFIG=/path/to/private/github-curl.conf
           CAMPUSRENT_INSTALL_DIR=/opt/campusrent
           CAMPUSRENT_REPO=bonelag/CampusRent, CAMPUSRENT_REF=main
+          CAMPUSRENT_PROXY=caddy|external (existing Nginx/Apache/host proxy)
 Automation: CAMPUSRENT_DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL
             (all prefixed CAMPUSRENT_), ADMIN_EMAIL, ADMIN_PASSWORD, DOMAIN, PORT
 Existing configuration is reused. Set CAMPUSRENT_RECONFIGURE=1 to replace it.
+Set CAMPUSRENT_PROXY=external to switch a saved domain to your existing proxy.
 HELP
             exit 0 ;;
         *) printf 'Unknown option: %s\n' "$cr_option" >&2; exit 2 ;;
@@ -38,6 +40,7 @@ cr_repo=${CAMPUSRENT_REPO:-bonelag/CampusRent}
 cr_ref=${CAMPUSRENT_REF:-main}
 cr_network=${cr_project}_network
 cr_subnet=${CAMPUSRENT_NETWORK_CIDR:-172.30.250.0/24}
+cr_proxy=${CAMPUSRENT_PROXY:-}
 
 say() { printf '\n%s\n' "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -51,6 +54,11 @@ trap 'exit 143' HUP TERM
 
 as_root() {
     if [ "$cr_root" = 0 ]; then "$@"; else sudo "$@"; fi
+}
+
+validate_proxy() {
+    case "$cr_proxy" in caddy|external) ;; *) fail 'CAMPUSRENT_PROXY must be caddy or external.' ;; esac
+    [ "$cr_proxy" != external ] || [ -n "$cr_domain" ] || fail 'External proxy mode requires a domain.'
 }
 
 prompt() {
@@ -124,6 +132,9 @@ if [ "$cr_reuse" = 1 ]; then
     cr_subnet=$(sed -n 's/^CAMPUSRENT_NETWORK_CIDR=//p' "$cr_work/deploy.env")
     cr_saved_project=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$cr_work/deploy.env")
     cr_project=${cr_saved_project:-$cr_project}
+    cr_saved_proxy=$(sed -n 's/^CAMPUSRENT_PROXY=//p' "$cr_work/deploy.env")
+    cr_proxy=${cr_proxy:-${cr_saved_proxy:-caddy}}
+    validate_proxy
 else
     say 'Cau hinh PostgreSQL co san (host phai truy cap duoc tu Docker).'
     cr_db_host=$(prompt 'PostgreSQL host / Supabase pooler host' "${CAMPUSRENT_DB_HOST:-}")
@@ -133,6 +144,11 @@ else
     cr_db_password=$(prompt 'Database password' "${CAMPUSRENT_DB_PASSWORD:-}" 1)
     cr_db_ssl=$(prompt 'SSL: VerifyFull / Require / Disable' "${CAMPUSRENT_DB_SSL:-VerifyFull}")
     cr_domain=$(prompt 'Ten mien (de trong chi dung HTTP thu nghiem)' "${CAMPUSRENT_DOMAIN:-}")
+    if [ -n "$cr_domain" ] && [ -z "$cr_proxy" ]; then
+        cr_proxy=$(prompt 'HTTPS proxy: caddy / external (Nginx/Apache co san)' caddy)
+    fi
+    cr_proxy=${cr_proxy:-caddy}
+    validate_proxy
     cr_port=$(prompt 'Cong HTTP local / cong HTTP thu nghiem' "${CAMPUSRENT_PORT:-8080}")
     cr_admin_email=$(prompt 'Admin email' "${CAMPUSRENT_ADMIN_EMAIL:-}")
     cr_admin_password=$(prompt 'Admin password (at least 12 characters, max 72 UTF-8 bytes)' "${CAMPUSRENT_ADMIN_PASSWORD:-}" 1)
@@ -203,6 +219,13 @@ for key, val in env.items():
 PY
     unset cr_db_password cr_admin_password CAMPUSRENT_DB_PASSWORD CAMPUSRENT_ADMIN_PASSWORD
 fi
+
+# Persist the proxy choice without regenerating credentials on an existing installation.
+sed '/^CAMPUSRENT_PROXY=/d' "$cr_work/deploy.env" > "$cr_work/proxy.env"
+printf 'CAMPUSRENT_PROXY=%s\n' "$cr_proxy" >> "$cr_work/proxy.env"
+mv "$cr_work/proxy.env" "$cr_work/deploy.env"
+cr_https_profile=''
+if [ -n "$cr_domain" ] && [ "$cr_proxy" = caddy ]; then cr_https_profile='--profile https'; fi
 
 if [ "$cr_configure_only" != 1 ]; then
     if ! command -v docker >/dev/null 2>&1 || ! as_root docker compose version >/dev/null 2>&1; then
@@ -296,23 +319,41 @@ as_root install -m 0600 "$cr_work/active.env" "$cr_runtime/deploy.env"
 as_root install -m 0600 "$cr_work/active.env" "$cr_release/deploy.env"
 
 compose() {
-    if [ -n "$cr_domain" ]; then
+    if [ -n "$cr_https_profile" ]; then
         as_root docker compose --project-name "$cr_project" --env-file "$cr_runtime/deploy.env" -f "$cr_release/compose.production.yaml" --profile https "$@"
     else
         as_root docker compose --project-name "$cr_project" --env-file "$cr_runtime/deploy.env" -f "$cr_release/compose.production.yaml" "$@"
     fi
 }
 compose config --quiet
+if [ "$cr_proxy" = external ]; then
+    cr_caddy_ids=$(as_root docker ps -aq --filter "label=com.docker.compose.project=$cr_project" --filter 'label=com.docker.compose.service=caddy')
+    if [ -n "$cr_caddy_ids" ]; then
+        say 'Stopping the Caddy service for this CampusRent project. Your existing proxy handles HTTPS.'
+        compose --profile https stop caddy
+    fi
+fi
+start_app() {
+    if [ "$cr_proxy" = external ]; then
+        compose up -d --build --wait --wait-timeout 180 web
+    else
+        compose up -d --build --wait --wait-timeout 180
+    fi
+}
 say 'Building and starting CampusRent. Database migrations run before the API becomes healthy...'
-if ! compose up -d --build --wait --wait-timeout 180; then
+if ! start_app; then
     printf 'Diagnostics: sudo docker compose --project-name %s --env-file %s -f %s/compose.production.yaml %s logs --tail 100\n' \
-        "$cr_project" "$cr_runtime/deploy.env" "$cr_release" "${cr_domain:+--profile https}"
+        "$cr_project" "$cr_runtime/deploy.env" "$cr_release" "$cr_https_profile"
     fail 'Startup failed. Configuration, release files and persistent data were retained.'
 fi
 curl -fsS --max-time 15 "http://127.0.0.1:$cr_port/health" >/dev/null || fail 'Application health check failed.'
-if [ -n "$cr_domain" ]; then
+if [ -n "$cr_https_profile" ]; then
     curl -fsS --retry 6 --retry-delay 3 --retry-all-errors --max-time 15 "https://$cr_domain/health" >/dev/null || fail 'The app is healthy locally but HTTPS is not ready. Point DNS at this server and allow ports 80/443; inspect Caddy logs.'
     cr_url=https://$cr_domain
+elif [ "$cr_proxy" = external ]; then
+    cr_url=http://127.0.0.1:$cr_port
+    say "Configure your existing reverse proxy for https://$cr_domain -> $cr_url."
+    printf 'Verify public HTTPS after configuring the proxy: curl --fail https://%s/health\n' "$cr_domain"
 else
     cr_url=http://SERVER_IP:$cr_port
     say 'HTTP mode is for verification only. Configure a domain and HTTPS before accepting production accounts.'
@@ -321,7 +362,11 @@ if as_root test -e "$cr_install/current" && ! as_root test -L "$cr_install/curre
     fail 'The current path is not a symlink. Release is running; resolve the path manually.'
 fi
 as_root ln -sfnT "$cr_release" "$cr_install/current"
-say "CampusRent is healthy: $cr_url"
+if [ "$cr_proxy" = external ]; then
+    say "CampusRent backend is healthy: $cr_url (public HTTPS is managed by your proxy)."
+else
+    say "CampusRent is healthy: $cr_url"
+fi
 printf 'Manage: sudo docker compose --project-name %s --env-file %s -f %s/compose.production.yaml %s logs -f\n' \
-    "$cr_project" "$cr_runtime/deploy.env" "$cr_install/current" "${cr_domain:+--profile https}"
+    "$cr_project" "$cr_runtime/deploy.env" "$cr_install/current" "$cr_https_profile"
 say 'Re-run the installer to update. Existing credentials and upload volumes are retained. Back up PostgreSQL before updates.'

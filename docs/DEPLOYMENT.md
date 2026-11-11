@@ -48,12 +48,13 @@ Máy chủ cần Ubuntu 22.04+ hoặc Debian 12+, Internet và quyền root/sudo
 | Database name, username, password | Tài khoản có quyền kết nối và tạo/cập nhật schema ứng dụng |
 | SSL | `VerifyFull` mặc định xác minh chứng chỉ bằng CA hệ thống; `Require` mã hóa mà không xác minh hostname; `Disable` chỉ cho mạng nội bộ tin cậy |
 | Tên miền | Ví dụ `campusrent.example.com`, không gồm scheme, port hoặc đường dẫn |
+| HTTPS proxy | `caddy` để installer quản lý HTTPS; `external` để dùng Nginx/Apache/proxy đã có |
 | Port HTTP | Mặc định `8080`; khi có HTTPS, port này chỉ bind `127.0.0.1` |
 | Admin email, password | Mật khẩu tối thiểu 12 ký tự và tối đa 72 byte UTF-8; input được ẩn |
 
 PostgreSQL phải có sẵn; installer không tạo hoặc xóa database bên ngoài. `localhost` được đổi thành `host.docker.internal`, nhưng PostgreSQL trên host vẫn phải cho phép kết nối từ mạng Docker. Script kiểm tra kết nối từ một container PostgreSQL client trước khi khởi động web, và không truyền mật khẩu qua đối số shell hoặc ghi mật khẩu vào log.
 
-Trỏ DNS A/AAAA của tên miền vào máy chủ và cho phép TCP 80/443 trước khi bật HTTPS. Caddy tự cấp và gia hạn chứng chỉ. Nếu máy đã có reverse proxy chiếm các port này, dùng cấu hình proxy hiện có và đọc mục chạy thủ công. Để trống tên miền chỉ dành cho kiểm tra HTTP; cấu hình HTTPS trước khi nhận tài khoản thật.
+Trỏ DNS A/AAAA của tên miền vào máy chủ và cho phép TCP 80/443 trước khi bật HTTPS. Chế độ `caddy` tự cấp và gia hạn chứng chỉ, cần các cổng này còn trống. Nếu máy đã có Nginx/Apache/proxy, chọn `external` và làm theo [hướng dẫn Nginx](#dùng-nginx-đã-có-trên-vps). Để trống tên miền chỉ dành cho kiểm tra HTTP; cấu hình HTTPS trước khi nhận tài khoản thật.
 
 Một chuỗi kết nối có mật khẩu từng xuất hiện trong mẫu cấu hình cũ. Chủ database cần đổi credential đó trước khi dùng production; mẫu hiện tại đã được thay bằng placeholder.
 
@@ -73,9 +74,63 @@ current -> releases/<timestamp>/  Bản triển khai đã qua healthcheck
 
 Thư mục `runtime` có quyền `0700`; JSON cấu hình có quyền `0640` cho UID ứng dụng `1654`. Password và JWT không được đưa vào Git hoặc Docker image. Container web chạy bằng user ứng dụng, filesystem chỉ đọc và một vùng `/tmp` riêng. Volume `uploads_data` giữ ảnh phòng và tệp xác minh qua các lần cập nhật.
 
-`compose.production.yaml` chạy `web` với PostgreSQL bên ngoài. Profile `https` thêm Caddy. Installer tạo network riêng, cấu hình danh sách network reverse proxy được tin cậy, build React/API, áp dụng EF migrations trong quá trình khởi động và chờ `/health`. Mỗi container dùng snapshot cấu hình riêng để việc cập nhật không đổi secret của container đang chạy.
+`compose.production.yaml` chạy `web` với PostgreSQL bên ngoài. Chế độ `caddy` bật profile `https`; chế độ `external` chỉ khởi động `web` và dừng Caddy thuộc cùng project nếu còn container từ lần cài trước. Installer tạo network riêng, cấu hình danh sách network reverse proxy được tin cậy, build React/API, áp dụng EF migrations trong quá trình khởi động và chờ `/health`. Mỗi container dùng snapshot cấu hình riêng để việc cập nhật không đổi secret của container đang chạy.
+
+Chế độ `external` giữ tên miền và bind backend tại `127.0.0.1:<APP_PORT>`. Installer xác nhận sức khỏe backend rồi cập nhật `current`; HTTPS công khai được kiểm tra riêng sau khi cấu hình proxy. Thông báo backend healthy không xác nhận chứng chỉ hoặc routing HTTPS của Nginx.
 
 Production chỉ seed trường đại học và tạo admin nếu chưa có; không seed phòng hoặc tài khoản demo. Admin đã tồn tại giữ nguyên mật khẩu. Tài khoản mới luôn là người tìm trọ; chủ trọ gửi yêu cầu trên `/account` để admin duyệt tại `/admin`. Quyền mới có hiệu lực với phiên hiện tại. Đổi mật khẩu tại trang tài khoản sẽ vô hiệu hóa các phiên cũ. Phiên tạo bởi phiên bản cũ cần đăng nhập lại một lần.
+
+## Dùng Nginx đã có trên VPS
+
+Chọn `external` khi installer hỏi HTTPS proxy, hoặc đặt biến ngay trên tiến trình chạy script:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh \
+  | CAMPUSRENT_PROXY=external sh
+```
+
+Với repository private, thêm `CAMPUSRENT_PROXY=external` bên cạnh `CAMPUSRENT_GITHUB_CURL_CONFIG` trong lệnh xác thực ở đầu tài liệu. Với checkout Linux: `CAMPUSRENT_PROXY=external CAMPUSRENT_SOURCE_DIR="$PWD" sh deploy.sh`.
+
+Nếu đã có cấu hình, chọn `Y` để giữ database/admin/JWT. Biến `CAMPUSRENT_PROXY=external` vẫn thay được lựa chọn Caddy đã lưu mà không cần `CAMPUSRENT_RECONFIGURE=1`; lựa chọn mới được giữ cho các lần cập nhật tiếp theo. Installer quản lý container Caddy thuộc project CampusRent, không sửa dịch vụ Nginx trên host.
+
+Kiểm tra backend trước khi cấu hình proxy:
+
+```sh
+curl --fail http://127.0.0.1:8080/health
+```
+
+Nếu tên miền đã có server block Nginx, cập nhật block đó. Với tên miền mới trên Ubuntu/Debian, dùng [mẫu Nginx](nginx/campusrent.conf), thay `campusrent.example.com` bằng tên miền thật và thay port `8080` nếu đã chọn port khác:
+
+```sh
+sudo install -m 0644 /opt/campusrent/current/docs/nginx/campusrent.conf \
+  /etc/nginx/sites-available/campusrent
+sudoedit /etc/nginx/sites-available/campusrent
+sudo ln -sfn /etc/nginx/sites-available/campusrent /etc/nginx/sites-enabled/campusrent
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Mẫu giữ `Host`, địa chỉ client và scheme của request khi chuyển đến backend; giới hạn request 20 MB đủ cho các endpoint ảnh/PDF của ứng dụng. Nginx vẫn quản lý các website khác trên cùng VPS.
+
+Sau khi DNS trỏ đúng VPS và HTTP của tên miền truy cập được, bật HTTPS bằng Certbot hoặc cấu hình chứng chỉ đang có. Với Certbot trên Ubuntu/Debian:
+
+```sh
+sudo apt-get update
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d campusrent.example.com --redirect
+curl --fail https://campusrent.example.com/health
+```
+
+Nếu một lần cài cũ đã báo `web Healthy` rồi lỗi `failed to bind host port ...:80/tcp`, image và cấu hình đã được giữ. Đường dẫn release nằm trong dòng `Diagnostics`; `current` có thể chưa tồn tại. Có thể khôi phục backend ngay bằng file Compose của release đó:
+
+```sh
+campusrent_release=/opt/campusrent/releases/RELEASE_FROM_DIAGNOSTICS
+sudo docker compose --project-name campusrent \
+  --env-file /opt/campusrent/runtime/deploy.env \
+  -f "$campusrent_release/compose.production.yaml" up -d --no-build --wait web
+curl --fail http://127.0.0.1:8080/health
+```
+
+Cấu hình server block Nginx như mẫu và kiểm tra HTTPS. Để tiếp tục cập nhật bằng installer, dùng bản hỗ trợ `CAMPUSRENT_PROXY=external` và giữ cấu hình khi được hỏi; bản installer cũ vẫn bật Caddy khi có tên miền.
 
 ## Cập nhật và vận hành
 
@@ -93,7 +148,7 @@ sudo docker compose --project-name campusrent \
   --profile https logs --tail 100 -f
 ```
 
-Bỏ `--profile https` khi dùng HTTP để kiểm tra. Theo dõi `/health`, log `web`/`caddy`, HTTP 5xx và hạn sử dụng chứng chỉ. Log container được xoay với giới hạn dung lượng. Nếu khởi động thất bại, installer in lệnh chẩn đoán của release đó và giữ cấu hình/dữ liệu để xử lý. Migrations không được tự động rollback.
+Bỏ `--profile https` khi dùng HTTP hoặc proxy `external`; với `external`, theo dõi thêm log/chứng chỉ của Nginx thay cho Caddy. Theo dõi `/health`, HTTP 5xx và hạn sử dụng chứng chỉ. Log container được xoay với giới hạn dung lượng. Nếu khởi động thất bại, installer in lệnh chẩn đoán của release đó và giữ cấu hình/dữ liệu để xử lý. Migrations không được tự động rollback.
 
 Để đổi tên miền/database/credential bằng câu hỏi tương tác:
 
@@ -103,7 +158,7 @@ curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh |
 
 Để đổi tích hợp hoặc JWT, sửa cấu hình gốc bằng `sudoedit /opt/campusrent/runtime/appsettings.Production.json`, rồi chạy lại installer và chọn dùng lại cấu hình. Đổi JWT secret khiến các phiên hiện tại phải đăng nhập lại. Không sửa snapshot của container đang chạy.
 
-Các tùy chọn: `CAMPUSRENT_INSTALL_DIR` đổi thư mục, `CAMPUSRENT_REPO`/`CAMPUSRENT_REF` chọn repository/ref, `CAMPUSRENT_PROJECT` đổi tên project Docker và `CAMPUSRENT_NETWORK_CIDR` chọn subnet riêng không trùng network hiện có. Giữ tên project khi cập nhật để dùng đúng volume dữ liệu.
+Các tùy chọn: `CAMPUSRENT_INSTALL_DIR` đổi thư mục, `CAMPUSRENT_REPO`/`CAMPUSRENT_REF` chọn repository/ref, `CAMPUSRENT_PROJECT` đổi tên project Docker, `CAMPUSRENT_PROXY` chọn `caddy`/`external`, và `CAMPUSRENT_NETWORK_CIDR` chọn subnet riêng không trùng network hiện có. Giữ tên project khi cập nhật để dùng đúng volume dữ liệu.
 
 ## Cấu hình tự động và tích hợp tùy chọn
 

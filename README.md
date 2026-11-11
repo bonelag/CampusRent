@@ -67,11 +67,13 @@ Test backend dùng SQLite quan hệ thật và cơ sở dữ liệu riêng cho t
 
 ## Triển khai
 
-Đọc [hướng dẫn triển khai](docs/DEPLOYMENT.md). `deploy.sh` cài Docker trên Ubuntu/Debian, hỏi PostgreSQL và admin từ terminal, tạo JWT secret, chạy migration/healthcheck và thiết lập HTTPS qua Caddy khi có tên miền. `compose.production.yaml` dùng PostgreSQL có sẵn; `compose.yaml` dành cho stack local có database riêng. Dữ liệu tải lên và cấu hình được giữ khi chạy lại installer.
+Đọc [hướng dẫn triển khai](docs/DEPLOYMENT.md). `deploy.sh` cài Docker trên Ubuntu/Debian, hỏi PostgreSQL và admin từ terminal, tạo JWT secret, chạy migration/healthcheck và cho chọn HTTPS qua Caddy hoặc proxy đã có. `compose.production.yaml` dùng PostgreSQL có sẵn; `compose.yaml` dành cho stack local có database riêng. Dữ liệu tải lên và cấu hình được giữ khi chạy lại installer.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bonelag/CampusRent/main/deploy.sh | sh
 ```
+
+VPS đã có Nginx/Apache: thêm `CAMPUSRENT_PROXY=external` vào tiến trình `sh` (`curl ... | CAMPUSRENT_PROXY=external sh`), giữ cấu hình khi được hỏi, rồi cấu hình proxy đến `127.0.0.1:8080` theo [hướng dẫn Nginx](docs/DEPLOYMENT.md#dùng-nginx-đã-có-trên-vps). Lựa chọn proxy được lưu cho các lần cập nhật sau.
 
 Lệnh tải ẩn danh cần repository public. Kho hiện private; dùng cấu hình curl có token theo [hướng dẫn triển khai](docs/DEPLOYMENT.md), hoặc từ checkout Linux chạy `CAMPUSRENT_SOURCE_DIR="$PWD" sh deploy.sh`. Kết quả kiểm tra gần nhất nằm trong [TESTING.md](docs/TESTING.md).
 
