@@ -65,7 +65,7 @@ export default function Layout() {
               <Compass size={15} />
               <span>Tìm phòng</span>
             </NavLink>
-            {user?.role === 'LANDLORD' && (
+            {['LANDLORD', 'ADMIN'].includes(user?.role) && (
               <>
                 <NavLink to="/my-rooms">
                   <House size={15} />
@@ -155,7 +155,7 @@ export default function Layout() {
           <NavLink to="/" end>
             <Compass size={16} /> Tìm phòng
           </NavLink>
-          {user?.role === 'LANDLORD' && (
+          {['LANDLORD', 'ADMIN'].includes(user?.role) && (
             <>
               <NavLink to="/my-rooms">
                 <House size={16} /> Phòng của tôi

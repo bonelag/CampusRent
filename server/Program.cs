@@ -23,14 +23,24 @@ if (args.Contains("--healthcheck"))
     catch { Environment.ExitCode = 1; }
     return;
 }
-var builder = WebApplication.CreateBuilder(args.Where(a => a != "--migrate").ToArray());
+var migrateOnly = args.Contains("--migrate");
+var importSampleData = args.Contains("--import-sample-data");
+if (migrateOnly && importSampleData)
+    throw new InvalidOperationException("Choose either --migrate or --import-sample-data.");
+var builder = WebApplication.CreateBuilder(args.Where(a => a is not "--migrate" and not "--import-sample-data").ToArray());
 var development = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 var secret = builder.Configuration["Jwt:Secret"];
-if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32 || secret.StartsWith("CHANGE_ME") ||
-    (!development && (secret.StartsWith("CampusRent_Production_Secret_Key_") || secret == "CampusRent-local-development-only-secret-2026")))
+var invalidSecret = string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32 || secret.StartsWith("CHANGE_ME") ||
+    (!development && (secret.StartsWith("CampusRent_Production_Secret_Key_") || secret == "CampusRent-local-development-only-secret-2026"));
+if (invalidSecret)
 {
-    if (!development) throw new InvalidOperationException("Set Jwt__Secret to a random secret of at least 32 bytes.");
-    secret = "CampusRent-local-development-only-secret-2026";
+    if (importSampleData)
+        secret = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+    else
+    {
+        if (!development) throw new InvalidOperationException("Set Jwt__Secret to a random secret of at least 32 bytes.");
+        secret = "CampusRent-local-development-only-secret-2026";
+    }
     builder.Configuration["Jwt:Secret"] = secret;
 }
 builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
@@ -80,7 +90,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     o.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true,
-        ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+        ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret!)),
         ValidIssuer = builder.Configuration["Jwt:Issuer"], ValidAudience = builder.Configuration["Jwt:Audience"],
         ClockSkew = TimeSpan.FromSeconds(30)
     };
@@ -225,8 +235,14 @@ using (var scope = app.Services.CreateScope())
             CREATE UNIQUE INDEX IF NOT EXISTS ""IX_landlord_requests_pending_user"" ON ""landlord_requests"" (""user_id"") WHERE ""status"" = 'PENDING';
         ");
     }
-    if (args.Contains("--migrate"))
+    if (migrateOnly)
     {
+        return;
+    }
+    if (importSampleData)
+    {
+        var result = await MarketSampleDataImporter.ImportAsync(db);
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { success = true, imported = result }));
         return;
     }
     if (builder.Environment.IsDevelopment()) await DbSeeder.SeedAsync(db);

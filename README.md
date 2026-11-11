@@ -39,6 +39,8 @@ npm --prefix client run dev
 
 Mở [localhost:5173](http://localhost:5173). API [localhost:5059](http://localhost:5059/api/universities), Swagger [localhost:5059/swagger](http://localhost:5059/swagger), health [localhost:5059/health](http://localhost:5059/health).
 
+`run.bat` đọc `DATABASE_URL` và các dịch vụ production từ `.env`, sau đó mở runtime ASP.NET Core Production tại máy local với đầy đủ quyền đọc/ghi trên PostgreSQL production. Launcher yêu cầu nhập `PRODUCTION` và dừng đúng backend CampusRent cũ trên cổng 5059 để tránh tiếp tục dùng nhầm SQLite. Mọi thao tác đăng tin, sửa, xóa, đặt lịch, đánh giá và quản trị từ bản local sẽ thay đổi dữ liệu production thật. Nếu `JWT_SECRET` vẫn là giá trị mẫu, launcher tạo một secret tạm trong bộ nhớ nên cần đăng nhập lại sau khi khởi động backend. Muốn dùng SQLite development an toàn như trước, chạy `powershell -File run.ps1`.
+
 Development tự tạo `server/campusrent.db`, 5 trường, 5 phòng và tài khoản demo. Không cần PostgreSQL để trải nghiệm local. Vite proxy `/api` đến port 5059. Để đổi backend, dùng `client/.env.example`. Khi chạy binary trực tiếp, đặt `ASPNETCORE_ENVIRONMENT=Development` để dùng chế độ local.
 
 | Vai trò | Email | Mật khẩu development |
@@ -48,6 +50,16 @@ Development tự tạo `server/campusrent.db`, 5 trường, 5 phòng và tài kh
 | Quản trị | admin@campusrent.vn | Password@123 |
 
 Các tài khoản này chỉ được seed trong Development. Production dùng admin được cấu hình riêng bằng installer hoặc biến môi trường.
+
+### Nhập dữ liệu mẫu thị trường
+
+Dữ liệu mẫu production không được tạo khi ứng dụng khởi động. Lệnh rõ ràng dưới đây nhập idempotent 20 bản ghi được đánh dấu vào mỗi bảng nghiệp vụ, giữ nguyên dữ liệu hiện hữu và tự kiểm tra số lượng trước khi commit transaction:
+
+```sh
+dotnet run --project server -- --import-sample-data
+```
+
+Tiến trình chỉ cần cấu hình PostgreSQL production; chế độ import dùng cấu hình JWT tạm trong bộ nhớ và thoát trước khi mở HTTP server. Các phòng mẫu giữ giá, diện tích, địa chỉ, ảnh và liên kết nguồn công khai đã ghi nhận ngày 11/11/2026; tài khoản và hoạt động liên quan là dữ liệu tổng hợp, không dùng mật khẩu biết trước. Có thể chạy lại lệnh mà không tạo bản ghi trùng.
 
 ## Kiểm thử
 

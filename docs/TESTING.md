@@ -6,9 +6,9 @@ GitHub Actions dùng runner cố định `ubuntu-24.04`, tương thích Playwrig
 
 | Nhóm | Kết quả |
 | --- | --- |
-| Backend xUnit + HTTP integration | 95 đạt, không bỏ qua |
+| Backend xUnit + HTTP integration | 96 đạt, không bỏ qua |
 | PostgreSQL migrations/persistence | Đạt với PostgreSQL 16 thật, schema riêng cho test |
-| Frontend Vitest / Testing Library | 21 đạt, gồm 4 ca tạo phòng từ QA |
+| Frontend Vitest / Testing Library | 22 đạt, gồm kiểm tra menu đăng tin của ADMIN |
 | Playwright desktop + mobile | 28 đạt |
 | Rà giao diện ở 320/360/390/768/1024/1440 px | 48 màn hình, không tràn ngang hoặc lỗi JavaScript sau khi tải font |
 | Vite production build | Đạt |
@@ -22,7 +22,7 @@ GitHub Actions dùng runner cố định `ubuntu-24.04`, tương thích Playwrig
 
 ## Các phần đã được kiểm tra
 
-Bộ xUnit được chia theo trách nhiệm thành 62 file C#; file lớn nhất là 96 dòng. Fixture/helper nằm trong `Infrastructure/`, các ca kiểm thử nằm trong thư mục chức năng và class có tên trùng file. Xem [hướng dẫn tổ chức backend tests](../tests/CampusRent.Tests/README.md). Toàn bộ 95 ca, gồm dữ liệu Theory, đã được đối chiếu và chạy lại với SQLite/PostgreSQL sau khi tách.
+Bộ xUnit được chia theo trách nhiệm thành 63 file C#; file lớn nhất là 96 dòng. Fixture/helper nằm trong `Infrastructure/`, các ca kiểm thử nằm trong thư mục chức năng và class có tên trùng file. Xem [hướng dẫn tổ chức backend tests](../tests/CampusRent.Tests/README.md). Toàn bộ 96 ca, gồm dữ liệu Theory, đã chạy với SQLite/PostgreSQL.
 
 Backend bao phủ đăng ký người tìm trọ, chặn tự cấp chủ trọ/admin, đăng nhập/JWT, chuẩn hóa email, quyền sở hữu và vai trò hiện tại, tìm kiếm/bán kính/giá/tiện ích, dự toán chi phí, đăng/sửa/ẩn/gia hạn tin, thay ảnh, đánh giá duy nhất và kiểm duyệt, báo cáo, yêu thích, đặt/xác nhận/hủy/đặt lại lịch, UTC và hết hạn tin.
 
@@ -78,6 +78,14 @@ dotnet ef migrations has-pending-model-changes --project server
 - Ca external được chạy thêm với container Caddy ở trạng thái Created và đang chạy thuộc cùng project; cả hai được dừng trong khi backend và phiên đã có vẫn hoạt động.
 - Mẫu `docs/nginx/campusrent.conf` đạt `nginx -t` trong container Nginx Alpine. Mẫu chuyển tiếp về loopback, giữ Host/forwarded headers và cho phép request 20 MB để upload ảnh/PDF.
 - Các kiểm tra backend/frontend/E2E phía trên là kết quả ngày 10/11; lần sửa installer này không chạy lại các bộ đó. Nginx/DNS/chứng chỉ trên VPS thực tế cần kiểm tra bằng lệnh trong hướng dẫn triển khai.
+
+## Bổ sung ngày 11/11/2026: ADMIN, dữ liệu thị trường và launcher production
+
+- ADMIN hiển thị và truy cập chức năng đăng/quản lý phòng giống LANDLORD; ca frontend mới kiểm tra cả menu desktop và mobile.
+- CLI `--import-sample-data` tạo idempotent 20 bản ghi liên kết hợp lệ trong từng bảng nghiệp vụ. Hai mươi phòng giữ giá, diện tích, địa chỉ, ảnh và URL nguồn từ Phongtro123/Thuephongtro; tài khoản và hoạt động được đánh dấu là dữ liệu mẫu.
+- Importer đã chạy hai lần trên PostgreSQL 16 cô lập, sau đó chạy và chạy lại thành công trên PostgreSQL production: mỗi bảng được xác nhận đúng 20 bản ghi do importer quản lý.
+- `run.bat` tải `.env`, yêu cầu xác nhận `PRODUCTION`, thay backend CampusRent cũ trên cổng 5059 và kết nối database production với đầy đủ quyền. `run.ps1` không tham số vẫn dùng SQLite development.
+- Kết quả cuối: 96/96 backend với PostgreSQL thật, 22/22 frontend, build .NET không warning, Vite build/Prettier đạt, EF không có model chưa migrate và 28/28 Playwright desktop/mobile đạt.
 
 ## Báo cáo và giới hạn
 
