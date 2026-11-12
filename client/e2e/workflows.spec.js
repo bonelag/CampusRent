@@ -98,12 +98,42 @@ test('chủ trọ tạo và chỉnh sửa tin đăng', async ({ page }) => {
   await expect(row.getByText('Đã ẩn', { exact: true })).toBeVisible();
 });
 test('quản trị xem tổng quan và danh sách kiểm duyệt', async ({ page }) => {
+  const openAdminView = async (name) => {
+    const mobileMenu = page.getByRole('button', { name: 'Mở menu quản trị' });
+    if (await mobileMenu.isVisible()) await mobileMenu.click();
+    await page.getByRole('button', { name, exact: true }).click();
+  };
   await login(page, 'admin@campusrent.vn');
   await page.goto('/admin');
-  await expect(page.getByRole('heading', { name: 'Tổng quan quản trị.' })).toBeVisible();
-  await expect(page.locator('.stat-card')).toHaveCount(6);
-  await page.getByRole('button', { name: /Đánh giá chờ duyệt/ }).click();
-  await expect(page.getByRole('heading', { name: 'Đã kiểm duyệt xong' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Tổng quan', exact: true, level: 1 })
+  ).toBeVisible();
+  await expect(page.locator('.adminator-kpi-card')).toHaveCount(4);
+  await openAdminView('Phòng trọ');
+  await expect(
+    page.getByRole('heading', { name: 'Phòng trọ', exact: true, level: 1 })
+  ).toBeVisible();
+  await expect(page.locator('.adminator-table tbody tr').first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Đăng phòng mới' })).toBeVisible();
+  await expect(page.getByLabel('Lọc theo trạng thái phòng')).toBeVisible();
+  if (page.viewportSize().width <= 560) {
+    await expect(page.getByLabel('Sắp xếp phòng trọ')).toBeVisible();
+    expect(
+      await page.locator('.adminator-table-wrap').evaluate((element) => {
+        return element.scrollWidth === element.clientWidth;
+      })
+    ).toBeTruthy();
+  } else {
+    await expect(page.getByRole('button', { name: 'Tin đăng' })).toBeVisible();
+  }
+  await openAdminView('Người dùng');
+  await expect(
+    page.getByRole('heading', { name: 'Người dùng', exact: true, level: 1 })
+  ).toBeVisible();
+  await expect(page.getByText('Số điện thoại', { exact: true })).toHaveCount(0);
+  await page.getByTitle('Đặt lại mật khẩu').first().click();
+  await expect(page.getByRole('dialog', { name: 'Đặt lại mật khẩu' })).toBeVisible();
+  await expect(page.getByLabel('Mật khẩu mới')).toBeVisible();
 });
 test('bản đồ hiển thị và trang không tràn ngang', async ({ page }) => {
   await page.goto('/');

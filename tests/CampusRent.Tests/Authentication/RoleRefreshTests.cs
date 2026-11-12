@@ -16,7 +16,7 @@ namespace CampusRent.Tests;
 public class RoleRefreshTests : SecurityTestBase
 {
     [Fact]
-    public async Task ApprovalAndDemotionApplyToExistingTokens()
+    public async Task ApprovalAppliesToExistingTokenAndAdminCannotBypassRoleWorkflow()
     {
         var student = await Account();
         var request = await Data(await client.PostAsJsonAsync("/api/landlord-requests", new { title = "Upgrade account", reason = "I own rental rooms", imageUrls = Array.Empty<string>() }));
@@ -26,8 +26,8 @@ public class RoleRefreshTests : SecurityTestBase
         Use(student.Token);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/rooms/mine")).StatusCode);
         Use(admin.Token);
-        await Data(await client.PutAsJsonAsync($"/api/admin/users/{student.Id}", new { fullName = "Student again", role = "STUDENT", isEduVerified = false }));
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"/api/admin/users/{student.Id}", new { fullName = "Student again", role = "STUDENT", isEduVerified = false })).StatusCode);
         Use(student.Token);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/rooms/mine")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/rooms/mine")).StatusCode);
     }
 }

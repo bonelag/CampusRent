@@ -1,32 +1,20 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using CampusRent.Server.Data;
-using CampusRent.Server.Models;
-using CampusRent.Server.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace CampusRent.Tests;
+
 public class UserSearchTests : RoomFeatureTestBase
 {
     [Fact]
-    public async Task AdminSearchUsersByQueryAndValidation()
+    public async Task AdminSearchesByNameOrEmailAndPasswordResetIsValidated()
     {
-        await Register("STUDENT", "nguyen_van_a@example.com");
+        var userId = await Register("STUDENT", "nguyen_van_a@example.com");
         await Admin();
-        var searchFound = await Data(await client.GetAsync("/api/admin/users?q=nguyen_van_a"));
-        Assert.Single(searchFound.EnumerateArray());
-        var searchEmpty = await Data(await client.GetAsync("/api/admin/users?q=khong_co_ai_dau_nhe"));
-        Assert.Empty(searchEmpty.EnumerateArray());
-        // Update non-existent user
-        var notFoundUpdate = await client.PutAsJsonAsync($"/api/admin/users/{Guid.NewGuid()}", new { fullName = "Tên", role = "STUDENT", isEduVerified = false });
-        Assert.Equal(HttpStatusCode.NotFound, notFoundUpdate.StatusCode);
-        // Update with empty name
-        var invalidUpdate = await client.PutAsJsonAsync($"/api/admin/users/{Guid.NewGuid()}", new { fullName = "", role = "STUDENT", isEduVerified = false });
-        Assert.Equal(HttpStatusCode.BadRequest, invalidUpdate.StatusCode);
+
+        Assert.Single((await Data(await client.GetAsync("/api/admin/users?q=nguyen_van_a"))).EnumerateArray());
+        Assert.Empty((await Data(await client.GetAsync("/api/admin/users?q=khong_co_ai_dau_nhe"))).EnumerateArray());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/admin/users/{userId}/password", new { password = "short" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync($"/api/admin/users/{Guid.NewGuid()}/password", new { password = "ValidPassword123!" })).StatusCode);
     }
 }

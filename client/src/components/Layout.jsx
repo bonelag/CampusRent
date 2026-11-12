@@ -55,6 +55,16 @@ export default function Layout() {
         : UserRound;
   const initials = user?.fullName.trim().split(/\s+/).at(-1).slice(0, 2).toUpperCase();
 
+  if (location.pathname.startsWith('/admin')) {
+    return (
+      <main id="main-content" className="admin-route-main">
+        <Suspense fallback={<Loading />}>
+          <Outlet />
+        </Suspense>
+      </main>
+    );
+  }
+
   return (
     <>
       <header className="header">
