@@ -96,9 +96,7 @@ describe('RoomDetailPage', () => {
 
     // 1. Kiểm tra hiển thị banner giảm thứ hạng đề xuất
     expect(screen.getByText(/Lưu ý về thứ hạng đề xuất/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/phòng có điểm đánh giá trung bình thấp/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/phòng có điểm đánh giá trung bình thấp/i)).toBeInTheDocument();
 
     // 2. Kiểm tra hiển thị dòng thông tin điểm số có trọng số
     expect(

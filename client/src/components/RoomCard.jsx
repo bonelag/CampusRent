@@ -51,7 +51,10 @@ export default function RoomCard({ room, horizontal = false }) {
             <span className="distance-type">{room.distanceKm != null ? ' · chim bay' : ''}</span>
           </span>
           {room.isDemoted && (
-            <span className="demoted-badge" title={room.demotionReason || 'Phòng nhận nhiều đánh giá thấp'}>
+            <span
+              className="demoted-badge"
+              title={room.demotionReason || 'Phòng nhận nhiều đánh giá thấp'}
+            >
               Giảm đề xuất
             </span>
           )}

@@ -123,7 +123,9 @@ export default function RoomDetailPage() {
         <div className="demoted-alert" role="alert">
           <AlertTriangle size={18} />
           <div>
-            <strong>Lưu ý về thứ hạng đề xuất:</strong> Phòng trọ này đang bị giảm thứ hạng đề xuất do {room.demotionReason ? room.demotionReason.toLowerCase() : 'nhận nhiều đánh giá thấp'}.
+            <strong>Lưu ý về thứ hạng đề xuất:</strong> Phòng trọ này đang bị giảm thứ hạng đề xuất
+            do{' '}
+            {room.demotionReason ? room.demotionReason.toLowerCase() : 'nhận nhiều đánh giá thấp'}.
           </div>
         </div>
       )}
@@ -329,11 +331,17 @@ export default function RoomDetailPage() {
                       <small>
                         {new Date(review.createdAt).toLocaleDateString('vi-VN')}
                         {review.user.isEduVerified ? (
-                          <span className="student-weight-badge" title="Đánh giá từ sinh viên xác thực (Trọng số 2.0x)">
+                          <span
+                            className="student-weight-badge"
+                            title="Đánh giá từ sinh viên xác thực (Trọng số 2.0x)"
+                          >
                             <ShieldCheck size={12} /> Sinh viên xác thực · Trọng số 2x
                           </span>
                         ) : (
-                          <span className="regular-review-badge" title="Đánh giá từ tài khoản thường (Trọng số 1.0x)">
+                          <span
+                            className="regular-review-badge"
+                            title="Đánh giá từ tài khoản thường (Trọng số 1.0x)"
+                          >
                             Tài khoản thường · Trọng số 1x
                           </span>
                         )}
