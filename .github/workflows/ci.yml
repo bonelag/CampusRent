@@ -32,7 +32,7 @@ jobs:
       - run: dotnet tool restore
       - run: dotnet test tests/CampusRent.Tests --settings tests/coverage.runsettings --collect:"XPlat Code Coverage"
         env:
-          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password
+          CAMPUSRENT_TEST_POSTGRES: Host=localhost;Port=5432;Database=campusrent_ci;Username=postgres;Password=ci-only-password;SSL Mode=Disable
       - run: dotnet ef migrations has-pending-model-changes --project server --no-build
       - run: npm ci
         working-directory: client
