@@ -157,6 +157,7 @@ builder.Services.AddHttpClient<IOsmPlacesClient, OsmPlacesClient>(client =>
 builder.Services.AddSingleton<IHaversineService, HaversineService>();
 builder.Services.AddSingleton<ILivingCostService, LivingCostService>();
 builder.Services.AddSingleton<IProfanityFilterService, ProfanityFilterService>();
+builder.Services.AddSingleton<IReviewRankingService, ReviewRankingService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<UploadStorage>();

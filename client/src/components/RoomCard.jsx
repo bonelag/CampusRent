@@ -50,6 +50,14 @@ export default function RoomCard({ room, horizontal = false }) {
             {room.distanceKm != null ? room.distanceKm + ' km đến tâm tìm kiếm' : 'Còn phòng'}
             <span className="distance-type">{room.distanceKm != null ? ' · chim bay' : ''}</span>
           </span>
+          {room.isDemoted && (
+            <span
+              className="demoted-badge"
+              title={room.demotionReason || 'Phòng nhận nhiều đánh giá thấp'}
+            >
+              Giảm đề xuất
+            </span>
+          )}
           <span className="rating">
             <Star size={12} fill="currentColor" />
             {room.reviewCount > 0 ? room.averageRating : 'Mới'}

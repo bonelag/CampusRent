@@ -25,9 +25,36 @@ public static class Mapping
         CreatedAt = r.CreatedAt,
         UpdatedAt = r.UpdatedAt
     };
-    public static RoomListItemDto Card(Room r, double? distance = null)
+    private static readonly IReviewRankingService DefaultRankingService = new ReviewRankingService();
+
+    public static RoomListItemDto Card(Room r, double? distance = null, IReviewRankingService? rankingService = null, IEnumerable<Review>? landlordReviews = null)
     {
-        var reviews = r.Reviews.Where(x => !x.IsFlagged).ToList();
-        return new() { Id = r.Id, Title = r.Title, Address = r.Address, Latitude = r.Latitude, Longitude = r.Longitude, BasePrice = r.BasePrice, ElectricPrice = r.ElectricPrice, WaterPrice = r.WaterPrice, InternetPrice = r.InternetPrice, OtherFee = r.OtherFee, Area = r.Area, MaxPeople = r.MaxPeople, Amenities = r.Amenities, CoverImage = r.Images.OrderByDescending(i => i.IsCover).ThenBy(i => i.DisplayOrder).FirstOrDefault()?.Url, Status = r.Status, CreatedAt = r.CreatedAt, DistanceKm = distance, AverageRating = reviews.Count == 0 ? 0 : Math.Round(reviews.Average(x => x.Rating), 1), ReviewCount = reviews.Count };
+        var svc = rankingService ?? DefaultRankingService;
+        var reviews = (r.Reviews ?? Enumerable.Empty<Review>()).Where(x => !x.IsFlagged).ToList();
+        var demotion = svc.EvaluateRoomDemotion(r, landlordReviews);
+        return new()
+        {
+            Id = r.Id,
+            Title = r.Title,
+            Address = r.Address,
+            Latitude = r.Latitude,
+            Longitude = r.Longitude,
+            BasePrice = r.BasePrice,
+            ElectricPrice = r.ElectricPrice,
+            WaterPrice = r.WaterPrice,
+            InternetPrice = r.InternetPrice,
+            OtherFee = r.OtherFee,
+            Area = r.Area,
+            MaxPeople = r.MaxPeople,
+            Amenities = r.Amenities,
+            CoverImage = r.Images.OrderByDescending(i => i.IsCover).ThenBy(i => i.DisplayOrder).FirstOrDefault()?.Url,
+            Status = r.Status,
+            CreatedAt = r.CreatedAt,
+            DistanceKm = distance,
+            AverageRating = svc.CalculateWeightedRating(reviews),
+            ReviewCount = reviews.Count,
+            IsDemoted = demotion.IsDemoted,
+            DemotionReason = demotion.Reason
+        };
     }
 }

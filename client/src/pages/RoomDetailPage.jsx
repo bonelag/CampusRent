@@ -21,6 +21,7 @@ import {
   Plus,
   Minus,
   Image,
+  AlertTriangle,
 } from 'lucide-react';
 import { api, money, amenities, estimateCost, fallbackImage, mediaUrl } from '../lib/api';
 import { useApp } from '../context/AppContext';
@@ -118,6 +119,16 @@ export default function RoomDetailPage() {
           </button>
         </div>
       </div>
+      {room.isDemoted && (
+        <div className="demoted-alert" role="alert">
+          <AlertTriangle size={18} />
+          <div>
+            <strong>Lưu ý về thứ hạng đề xuất:</strong> Phòng trọ này đang bị giảm thứ hạng đề xuất
+            do{' '}
+            {room.demotionReason ? room.demotionReason.toLowerCase() : 'nhận nhiều đánh giá thấp'}.
+          </div>
+        </div>
+      )}
       <div className="detail-title">
         <span className="eyebrow">MỘT KHỞI ĐẦU MỚI ĐANG CHỜ BẠN</span>
         <h1>{room.title}</h1>
@@ -288,12 +299,19 @@ export default function RoomDetailPage() {
           </section>
           <section className="detail-section reviews-section">
             <div className="section-title">
-              <h2>
-                <Star size={21} />{' '}
-                {room.reviewCount
-                  ? room.averageRating + ' · ' + room.reviewCount + ' đánh giá'
-                  : 'Trải nghiệm từ cộng đồng'}
-              </h2>
+              <div>
+                <h2>
+                  <Star size={21} />{' '}
+                  {room.reviewCount
+                    ? room.averageRating + ' · ' + room.reviewCount + ' đánh giá'
+                    : 'Trải nghiệm từ cộng đồng'}
+                </h2>
+                {room.reviewCount > 0 && (
+                  <span className="weighted-rating-hint">
+                    Điểm số có trọng số: Sinh viên xác thực 2.0x · Tài khoản thường 1.0x
+                  </span>
+                )}
+              </div>
               <button
                 className="button outline small"
                 onClick={() => needAuth(() => setModal('review'))}
@@ -312,9 +330,19 @@ export default function RoomDetailPage() {
                       <strong>{review.user.fullName}</strong>
                       <small>
                         {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                        {review.user.isEduVerified && (
-                          <span className="verified">
-                            <ShieldCheck size={12} /> Sinh viên đã xác thực
+                        {review.user.isEduVerified ? (
+                          <span
+                            className="student-weight-badge"
+                            title="Đánh giá từ sinh viên xác thực (Trọng số 2.0x)"
+                          >
+                            <ShieldCheck size={12} /> Sinh viên xác thực · Trọng số 2x
+                          </span>
+                        ) : (
+                          <span
+                            className="regular-review-badge"
+                            title="Đánh giá từ tài khoản thường (Trọng số 1.0x)"
+                          >
+                            Tài khoản thường · Trọng số 1x
                           </span>
                         )}
                       </small>
