@@ -102,6 +102,8 @@ public class RoomListItemDto
     public double? DistanceKm { get; set; }
     public double AverageRating { get; set; }
     public int ReviewCount { get; set; }
+    public bool IsDemoted { get; set; } = false;
+    public string? DemotionReason { get; set; }
     public RoomStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -132,6 +134,8 @@ public class RoomDetailDto
     public double? DistanceToUniversityKm { get; set; }
     public double AverageRating { get; set; }
     public int ReviewCount { get; set; }
+    public bool IsDemoted { get; set; } = false;
+    public string? DemotionReason { get; set; }
     public List<ReviewItemDto> Reviews { get; set; } = new();
 }
 

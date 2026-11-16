@@ -21,4 +21,5 @@ public class ReviewItemDto
     public bool IsFlagged { get; set; }
     public DateTime CreatedAt { get; set; }
     public UserProfileDto User { get; set; } = null!;
+    public double Weight { get; set; } = 1.0;
 }

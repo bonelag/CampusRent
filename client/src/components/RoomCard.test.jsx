@@ -42,3 +42,11 @@ it('nút lưu gọi API qua context', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Lưu Studio gần Bách Khoa' }));
   expect(toggleSave).toHaveBeenCalledWith(room);
 });
+it('hiển thị huy hiệu giảm đề xuất khi phòng bị demote', () => {
+  render(
+    <MemoryRouter>
+      <RoomCard room={{ ...room, isDemoted: true, demotionReason: 'Điểm đánh giá thấp' }} />
+    </MemoryRouter>
+  );
+  expect(screen.getByText('Giảm đề xuất')).toBeVisible();
+});

@@ -283,3 +283,46 @@ Commands below were read from source/configuration and were not executed during 
 - Added `AdminStatsTests` for the disjoint room distribution and booking backlog, extended the Admin page unit fixture/coverage for room filters, sorting, publishing, and safe hide actions, and expanded the Playwright admin workflow to verify the publishing link, filters, desktop sorting, mobile sorting, and absence of mobile table overflow.
 - Final verification passed 25 frontend Vitest tests, the Vite production build, Prettier, 97 backend tests with one optional PostgreSQL test skipped, and all 28 Playwright scenarios across desktop and mobile. The focused admin Playwright scenario also passed again on both viewports after the final pagination-reset polish. A scripted audit opened all nine admin views at 1440px and 390px in light/dark contexts with no JavaScript errors, document overflow, or mobile table overflow. Git whitespace validation passed; Git only reported the existing Windows LF-to-CRLF checkout notices for C# files.
 - Browser-audit screenshots were written under ignored `artifacts/admin-audit/`. All temporary API/Vite/Playwright servers were stopped. No production database, deployment, commit, push, or external service was changed; the existing uncommitted administration work remains local.
+
+### 2026-11-16 - Weighted Reviews and Demotion Ranking Implementation
+
+- Analyzed branch `backup-code-cu` against current code based on upstream `ca2859e` on branch `nam-review-ranking`. Confirmed `backup-code-cu` contained no custom business logic for weighted reviews or ranking demotion (only legacy css and postman collection artifacts). Preserved the existing architecture cleanly.
+- Implemented Feature 1 (Weighted Reviews for verified student accounts):
+  - Created `IReviewRankingService` and `ReviewRankingService` in `server/Services/ReviewRankingService.cs`.
+  - Accounts with `IsEduVerified == true` or email ending with `.edu.vn` (case-insensitive) are assigned a review weight of 2.0x; regular accounts receive 1.0x.
+  - Calculated weighted average rating as `Round(Sum(rating * weight) / Sum(weight), 1)` excluding flagged reviews.
+  - Registered `IReviewRankingService` as a singleton in `server/Program.cs`.
+  - Updated `ReviewsController.cs` to return review weight upon creation.
+  - Updated `RoomsController.cs` (`Detail` endpoint) and `Mapping.cs` (`Card` method) to use weighted average calculation and populate review weights and `isEduVerified`.
+  - Frontend (`RoomDetailPage.jsx`): Rendered weighted review badges (`Sinh viên xác thực · Trọng số 2x` with `ShieldCheck` icon vs `Tài khoản thường · Trọng số 1x`) and weighted rating explanatory text.
+- Implemented Feature 2 (Demotion Ranking for low-rated rooms and landlords):
+  - Added `IsDemoted` (bool) and `DemotionReason` (string?) to `RoomListItemDto` and `RoomDetailDto`.
+  - Evaluated demotion rules in `ReviewRankingService.EvaluateRoomDemotion`:
+    - Room-level: Room has weighted rating < 2.5, or >= 50% negative (1-2 star) reviews (with >= 2 reviews).
+    - Landlord-level: All unflagged reviews for the landlord across all their rooms have weighted rating < 2.5, or >= 50% negative reviews (with >= 2 reviews).
+  - Updated `RoomsController.cs` (`Search` endpoint):
+    - Batch queries unflagged reviews for all landlords of matched rooms to evaluate landlord-level demotion without N+1 queries.
+    - Applied primary sort `OrderBy(r => r.IsDemoted ? 1 : 0)` before secondary sorts (`price_asc`, `price_desc`, `distance`, `newest`), ensuring demoted listings are consistently pushed to the end of results.
+  - Frontend:
+    - `RoomCard.jsx`: Rendered `.demoted-badge` ("Giảm đề xuất") with tooltip reason.
+    - `RoomDetailPage.jsx`: Rendered `.demoted-alert` warning banner when `isDemoted` is true.
+    - `client/src/index.css`: Styled `.demoted-badge`, `.demoted-alert`, `.student-weight-badge`, `.regular-review-badge`, and `.weighted-rating-hint`.
+- Automated Testing & Verification:
+  - Added `tests/CampusRent.Tests/Services/ReviewRankingServiceTests.cs` (9 unit tests for weights, edu domain detection, weighted calculations, rounding, and demotion evaluation).
+  - Added `tests/CampusRent.Tests/Rooms/DemotionAndWeightedReviewApiTests.cs` (2 integration tests verifying API weighted calculations and search result demotion ordering).
+  - Added frontend tests in `client/src/components/RoomCard.test.jsx` and `client/src/pages/RoomDetailPage.test.jsx`.
+  - Verification results:
+    - Backend: `dotnet test tests/CampusRent.Tests` -> 113 passed, 0 failed, 1 skipped.
+    - Frontend: `npm.cmd --prefix client test` -> 27 passed across 8 test suites.
+
+### 2026-11-16 - Antigravity UI Theme Customization
+
+- Explored Antigravity 2.0 application layout and packaging: determined that `resources\app` does not exist on disk because Antigravity packages its Electron application inside `resources\app.asar`, and the frontend SPA is dynamically compiled and served by `resources\bin\language_server.exe` via HTTPS (`https://127.0.0.1:<port>/`).
+- Overcame Chromium's security restriction (`Not allowed to load local resource: file:///...` over HTTPS) by converting the wallpaper `C:\Users\tbui9\Pictures\nebula.jpg` into a Base64 Data URL.
+- Built `apply-antigravity-theme.js` to connect to Antigravity's active Chrome DevTools Protocol (CDP) WebSocket interface (`DevToolsActivePort`) and inject custom styles into the running Electron window.
+- Discovered and neutralized opaque parent background containers (`[data-main-content-body]`, `[data-side-panel-body]`, `.agy-sheet`, `.agy-inset-shell`, `.theme-standalone`) painting `#070708` (`var(--background)`), enabling full transparency for the cosmic background wallpaper.
+- Formatted chat messages into frosted glass cards (`rgba(12, 15, 22, 0.38)`, `backdrop-filter: blur(6px)`), styled typography (`#f3f4f6`, `font-weight: 450`, `text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95)`), and highlighted inline code tags in cyan (`#67e8f9`) over dark background (`rgba(24, 28, 40, 0.9)`).
+- Resolved menubar / dropdown menu occlusion by stripping `backdrop-filter` from large parent containers to prevent unwanted CSS Stacking Context traps, ensuring menus have `#141824` solid background and `z-index: 99999`.
+- Corrected chat composer placement by removing intrusive `padding-bottom` from parent containers (`[data-main-content-body]`, `[data-testid="conversation-view"]`), keeping the chat input bar (`#antigravity.agentSidePanelInputBox`) naturally docked at the bottom of the screen.
+- Verified active rendering visually via CDP screenshot captures and validated error-free script execution.
+

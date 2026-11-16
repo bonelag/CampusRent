@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
 [ApiController, Route("api/rooms")]
-public class RoomsController(CampusRentDbContext db, IHaversineService haversine, ILivingCostService costs) : ControllerBase
+public class RoomsController(CampusRentDbContext db, IHaversineService haversine, ILivingCostService costs, IReviewRankingService rankingService) : ControllerBase
 {
-    private IQueryable<Room> Loaded => db.Rooms.Include(r => r.Images).Include(r => r.Reviews).AsSplitQuery();
+    private IQueryable<Room> Loaded => db.Rooms.Include(r => r.Images).Include(r => r.Reviews).ThenInclude(v => v.User).AsSplitQuery();
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] RoomQueryParameters q)
     {
@@ -28,26 +28,67 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
         if (lat.HasValue != lon.HasValue || (q.Radius.HasValue && !lat.HasValue))
             return BadRequest(ApiResponse<object>.Fail("Chọn trường hoặc tọa độ trung tâm để lọc bán kính."));
         var rooms = await query.ToListAsync();
-        var items = rooms.Select(r => Mapping.Card(r, lat.HasValue ? haversine.CalculateDistanceKm(lat.Value, lon!.Value, r.Latitude, r.Longitude) : null)).AsEnumerable();
+        var landlordIds = rooms.Select(r => r.LandlordId).Distinct().ToList();
+        var landlordReviews = await db.Reviews
+            .Include(v => v.User)
+            .Include(v => v.Room)
+            .Where(v => !v.IsFlagged && landlordIds.Contains(v.Room.LandlordId))
+            .ToListAsync();
+        var landlordReviewsLookup = landlordReviews.ToLookup(v => v.Room.LandlordId);
+
+        var items = rooms.Select(r => Mapping.Card(
+            r,
+            lat.HasValue ? haversine.CalculateDistanceKm(lat.Value, lon!.Value, r.Latitude, r.Longitude) : null,
+            rankingService,
+            landlordReviewsLookup[r.LandlordId]
+        )).AsEnumerable();
         if (q.Radius.HasValue) items = items.Where(r => r.DistanceKm <= q.Radius);
         if (!string.IsNullOrWhiteSpace(q.Amenity)) items = items.Where(r => r.Amenities.Contains(q.Amenity));
-        items = q.Sort switch { "price_asc" => items.OrderBy(r => r.BasePrice), "price_desc" => items.OrderByDescending(r => r.BasePrice), "distance" => items.OrderBy(r => r.DistanceKm ?? double.MaxValue), _ => items.OrderByDescending(r => r.CreatedAt) };
+        items = q.Sort switch
+        {
+            "price_asc" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenBy(r => r.BasePrice),
+            "price_desc" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenByDescending(r => r.BasePrice),
+            "distance" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenBy(r => r.DistanceKm ?? double.MaxValue),
+            _ => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenByDescending(r => r.CreatedAt)
+        };
         var list = items.ToList();
         return Ok(ApiResponse<object>.Ok(new { items = list.Skip((q.Page - 1) * q.PageSize).Take(q.PageSize), total = list.Count, q.Page, q.PageSize }));
     }
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var r = await Loaded.Include(r => r.Landlord).Include(r => r.University).Include(r => r.Reviews).ThenInclude(v => v.User).SingleOrDefaultAsync(r => r.Id == id);
+        var r = await Loaded.Include(r => r.Landlord).Include(r => r.University).SingleOrDefaultAsync(r => r.Id == id);
         if (r == null || ((r.Status != RoomStatus.AVAILABLE || r.ExpiresAt <= DateTime.UtcNow) && !CanManage(r))) return NotFound(ApiResponse<object>.Fail("Tin không tồn tại hoặc đã ngừng hiển thị."));
         var reviews = r.Reviews.Where(v => !v.IsFlagged).OrderByDescending(v => v.CreatedAt).ToList();
+
+        var landlordReviews = await db.Reviews
+            .Include(v => v.User)
+            .Include(v => v.Room)
+            .Where(v => !v.IsFlagged && v.Room.LandlordId == r.LandlordId)
+            .ToListAsync();
+
+        var demotion = rankingService.EvaluateRoomDemotion(r, landlordReviews);
+        var weightedAvgRating = rankingService.CalculateWeightedRating(reviews);
+
         return Ok(ApiResponse<object>.Ok(new { r.Id, r.Title, r.Description, r.Address, r.Latitude, r.Longitude, r.BasePrice, r.ElectricPrice, r.WaterPrice, r.InternetPrice, r.OtherFee, r.Area, r.MaxPeople, r.Amenities, r.Status, r.ExpiresAt, r.CreatedAt, r.UniversityId,
+            isDemoted = demotion.IsDemoted,
+            demotionReason = demotion.Reason,
             images = r.Images.OrderBy(i => i.DisplayOrder).Select(i => i.Url),
             landlord = new { r.Landlord.Id, r.Landlord.FullName, r.Landlord.PhoneNumber },
             university = r.University == null ? null : new { r.University.Id, r.University.Name, r.University.ShortName, r.University.Latitude, r.University.Longitude },
             distanceToUniversityKm = r.University == null ? (double?)null : haversine.CalculateDistanceKm(r.Latitude, r.Longitude, r.University.Latitude, r.University.Longitude),
-            averageRating = reviews.Count == 0 ? 0 : Math.Round(reviews.Average(v => v.Rating), 1), reviewCount = reviews.Count,
-            reviews = reviews.Select(v => new { v.Id, v.Rating, v.Comment, v.CreatedAt, user = new { v.User.FullName, v.User.IsEduVerified } })
+            averageRating = weightedAvgRating, reviewCount = reviews.Count,
+            reviews = reviews.Select(v => new {
+                v.Id,
+                v.Rating,
+                v.Comment,
+                v.CreatedAt,
+                weight = rankingService.GetReviewWeight(v.User),
+                user = new {
+                    v.User.FullName,
+                    isEduVerified = v.User.IsEduVerified || (!string.IsNullOrWhiteSpace(v.User.Email) && v.User.Email.EndsWith(".edu.vn", StringComparison.OrdinalIgnoreCase))
+                }
+            })
         }));
     }
     [HttpGet("{id:guid}/cost-estimate")]
@@ -61,7 +102,7 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
     public async Task<IActionResult> Mine()
     {
         var rooms = await Loaded.Where(r => r.LandlordId == User.UserId()).ToListAsync();
-        return Ok(ApiResponse<object>.Ok(rooms.OrderByDescending(r => r.CreatedAt).Select(r => Mapping.Card(r))));
+        return Ok(ApiResponse<object>.Ok(rooms.OrderByDescending(r => r.CreatedAt).Select(r => Mapping.Card(r, null, rankingService))));
     }
     [HttpPost, Authorize(Roles = "LANDLORD,ADMIN")]
     public async Task<IActionResult> Create(CreateRoomDto dto)
