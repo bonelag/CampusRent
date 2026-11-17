@@ -326,3 +326,19 @@ Commands below were read from source/configuration and were not executed during 
 - Corrected chat composer placement by removing intrusive `padding-bottom` from parent containers (`[data-main-content-body]`, `[data-testid="conversation-view"]`), keeping the chat input bar (`#antigravity.agentSidePanelInputBox`) naturally docked at the bottom of the screen.
 - Verified active rendering visually via CDP screenshot captures and validated error-free script execution.
 
+### 2026-11-18 - Sprint 6 Final Release: Gmail SMTP OTP, Booking Reminders, User Dark Mode & Production Verification
+
+- Implemented dynamic Gmail SMTP configuration and mandatory email OTP verification before posting:
+  - Added `SmtpSetting` entity (`smtp_settings`, `Id = 1`), AES-GCM password encryption (`IEmailService` / `EmailService`), and Admin Console management (`GET/PUT /api/admin/smtp`, `POST /api/admin/smtp/test`, `Cài đặt SMTP` view in `AdminPage.jsx`).
+  - Added `IsEmailVerified` and OTP fields on `User`, `POST /api/auth/send-verification` (60s cooldown, 15m SHA-256 OTP), `POST /api/auth/verify-email` (5-attempt limit, auto-enables `IsEduVerified` for `.edu`/`.edu.vn`), `PATCH /api/admin/users/{id}/verification` for manual Admin toggling of regular/`.edu` verification, and `403 Forbidden` enforcement on `POST /api/rooms` when `!account.IsEmailVerified`.
+  - Added `EmailVerificationCard.jsx`, reminder banner in `Layout.jsx`, and verification gate in `PostRoomPage.jsx` / `AccountPage.jsx`.
+- Implemented appointment-day reminder emails, +3-day post-visit auto-hide, and 30-day listing lifecycle:
+  - Added `ConfirmedAt`, `ReminderSentAt`, `CustomerNotClosedAt`, and `AutoClosedAt` to `Booking` (`AddBookingLifecycleAndReminders` migration + `docs/schema.postgres.sql`).
+  - Updated `AutoExpireRoomsWorker` (5-minute cadence) to send landlord appointment reminders on visit day (`GMT+7`), auto-hide rooms 3 days after a confirmed visit unless marked `not-closed` (`PATCH /api/bookings/{id}/not-closed` in `ActivityController` + checkbox in `BookingsPage.jsx`), and enforce 30-day listing expiry with automatic +30-day window refresh on manual reactivation in `RoomsController.Status` and `MyRoomsPage.jsx`.
+- Upgraded User UI/UX, full Dark Mode, and interactive Leaflet map behavior:
+  - Added persistent User Dark Mode toggle (`campusrent-user-theme`, `:root[data-theme='dark']`) in `Layout.jsx` and `client/src/index.css`, single-row scrollable university quick-filter strip, rounded padded `.detail-section` cards, dark-adapted Adminator `--ad-*` verification pills, `scrollWheelZoom={true}` with `overscroll-behavior: contain`, and red center marker (`.search-center-marker`) inside the search radius circle in `RoomMap.jsx`.
+  - Reduced database round-trip latency against remote PostgreSQL in `AdminController.Stats` and `RoomsController.Search` (`AsSingleQuery()`), plus 30s focus-refresh throttling in `AdminPage.jsx`.
+- Seeded live production PostgreSQL with clean accounts (`chutro1@gmail.com`, `chutro2@gmail.com`, `user1@gmail.com`) and 20 verified real Hanoi rental listings (75 images).
+- Final verification suite: 124 backend xUnit tests, 29 frontend Vitest tests (8 suites), 28 Playwright E2E scenarios (desktop + mobile), Prettier check, Vite production build, and multi-stage Docker Compose smoke test.
+
+

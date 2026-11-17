@@ -13,6 +13,13 @@ import { Link } from 'react-router-dom';
 import { shortPrice } from '../lib/api';
 import 'leaflet/dist/leaflet.css';
 
+const searchCenterIcon = L.divIcon({
+  className: 'search-center-marker',
+  html: '<span class="search-center-dot" aria-label="Tâm tìm kiếm"></span>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
 function Fit({ rooms, center }) {
   const map = useMap();
   useEffect(() => {
@@ -36,12 +43,19 @@ function MapInteraction({ onSelectPoint }) {
   return null;
 }
 
-export default function RoomMap({ rooms, center, radius, onSelectPoint, onSelectRoom }) {
+export default function RoomMap({
+  rooms,
+  center,
+  centerLabel,
+  radius,
+  onSelectPoint,
+  onSelectRoom,
+}) {
   return (
     <MapContainer
       center={center || [21.022, 105.819]}
       zoom={13}
-      scrollWheelZoom={false}
+      scrollWheelZoom={true}
       className="room-map"
       aria-label="Bản đồ phòng trọ"
     >
@@ -52,11 +66,21 @@ export default function RoomMap({ rooms, center, radius, onSelectPoint, onSelect
       <Fit rooms={rooms} center={center} />
       {onSelectPoint && <MapInteraction onSelectPoint={onSelectPoint} />}
       {center && (
-        <Circle
-          center={center}
-          radius={(radius || 1) * 1000}
-          pathOptions={{ color: '#4f46e5', fillColor: '#6366f1', fillOpacity: 0.07, weight: 1.5 }}
-        />
+        <>
+          <Circle
+            center={center}
+            radius={(radius || 1) * 1000}
+            pathOptions={{ color: '#4f46e5', fillColor: '#6366f1', fillOpacity: 0.07, weight: 1.5 }}
+          />
+          <Marker position={center} icon={searchCenterIcon} zIndexOffset={1000}>
+            <Popup>
+              <strong>{centerLabel || 'Tâm tìm kiếm'}</strong>
+              <p>
+                {center[0].toFixed(5)}, {center[1].toFixed(5)}
+              </p>
+            </Popup>
+          </Marker>
+        </>
       )}
       {rooms.map((room) => (
         <Marker

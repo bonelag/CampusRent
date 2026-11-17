@@ -8226,3 +8226,343 @@ body {
   border-color: var(--line);
   color: var(--muted);
 }
+
+/* Comprehensive Detail, Form, Card Spacing, Radius & Dark Surface Polish */
+.page-title p {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.footer {
+  font-size: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-section {
+  padding: 24px 26px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.035);
+}
+
+.detail-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.detail-title h1 {
+  color: var(--ink);
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.3;
+}
+
+.detail-title > p {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.description {
+  font-size: 14px;
+  line-height: 1.78;
+  color: #475569;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detail-specs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+  margin-bottom: 18px;
+}
+
+.detail-specs > span {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.detail-specs strong {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.detail-specs small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.amenities-grid {
+  gap: 14px 18px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.booking-card,
+.panel,
+.profile-card,
+.booking-item,
+.managed-room,
+.modal {
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.detail-price {
+  color: var(--ink);
+}
+
+.detail-price > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.landlord small,
+.booking-hint,
+.booking-safety p,
+.report-link {
+  font-size: 12px;
+}
+
+.booking-safety {
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+}
+
+.calculator {
+  border-radius: 18px;
+  padding: 24px 26px;
+  margin: 18px 0;
+}
+
+.calculator .eyebrow {
+  font-size: 11px;
+}
+
+.calculator > p,
+.usage-inputs label > span,
+.usage-inputs small,
+.cost-lines,
+.calculator > .fine-print {
+  font-size: 12.5px;
+}
+
+.cost-total small {
+  font-size: 11.5px;
+}
+
+.reviews-section .section-title {
+  margin-bottom: 14px;
+}
+
+.review {
+  padding: 18px 20px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.review-heading strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.review-heading small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.review > p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.verified {
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .detail-specs {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .detail-section,
+  .calculator,
+  .booking-card,
+  .panel,
+  .profile-card,
+  .booking-item,
+  .managed-room,
+  .modal {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+  .review {
+    padding: 14px 15px;
+    border-radius: 12px;
+  }
+}
+
+/* Additional Dark Mode Surfaces & Typography Contrast */
+:root[data-theme='dark'] .description,
+:root[data-theme='dark'] .calculator > p,
+:root[data-theme='dark'] .cost-lines,
+:root[data-theme='dark'] .booking-safety p,
+:root[data-theme='dark'] .booking-hint,
+:root[data-theme='dark'] .landlord small,
+:root[data-theme='dark'] .report-link,
+:root[data-theme='dark'] .auth-content > p,
+:root[data-theme='dark'] .auth-switch,
+:root[data-theme='dark'] .role-picker span,
+:root[data-theme='dark'] .usage-inputs label > span,
+:root[data-theme='dark'] .usage-inputs small,
+:root[data-theme='dark'] .cost-total small,
+:root[data-theme='dark'] .calculator > .fine-print {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .cost-lines {
+  border-top-color: var(--line);
+}
+
+:root[data-theme='dark'] .cost-lines strong,
+:root[data-theme='dark'] .cost-total > span,
+:root[data-theme='dark'] .usage-inputs strong,
+:root[data-theme='dark'] .amenities-grid,
+:root[data-theme='dark'] .auth-content h1,
+:root[data-theme='dark'] .landlord strong,
+:root[data-theme='dark'] .modal-heading h2 {
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .calculator {
+  background: linear-gradient(135deg, #162038, #141c2f);
+  border-color: var(--line);
+}
+
+:root[data-theme='dark'] .calculator-icon {
+  background: var(--primary-soft);
+  color: #a5b4fc;
+}
+
+:root[data-theme='dark'] .booking-safety {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .cost-total {
+  border-top-color: var(--line);
+}
+
+:root[data-theme='dark'] .cost-total > strong,
+:root[data-theme='dark'] .auth-switch a,
+:root[data-theme='dark'] .back-link:hover {
+  color: #818cf8;
+}
+
+:root[data-theme='dark'] .role-picker > button {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .role-picker > button.selected {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: #c7d2fe;
+}
+
+:root[data-theme='dark'] .upload-zone,
+:root[data-theme='dark'] .post-images > div {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .status-pill.confirmed {
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+:root[data-theme='dark'] .status-pill.pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+
+:root[data-theme='dark'] .status-pill.cancelled,
+:root[data-theme='dark'] .status-pill.completed {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .mobile-navigation {
+  background: #141c2f;
+  border-color: var(--line);
+}
+
+:root[data-theme='dark'] .mobile-navigation > a {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .mobile-navigation > a.active {
+  background: var(--primary-soft);
+  color: #a5b4fc;
+}
+
+:root[data-theme='dark'] .leaflet-container {
+  background: #0f172a;
+}
+
+:root[data-theme='dark'] .leaflet-bar a,
+:root[data-theme='dark'] .leaflet-bar a:hover {
+  background: #141c2f;
+  color: #e2e8f0;
+  border-color: var(--line);
+}
+
+:root[data-theme='dark'] .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .leaflet-control-attribution a {
+  color: #a5b4fc;
+}
+
+.room-map,
+.picker-leaflet-map,
+.detail-map .leaflet-container {
+  overscroll-behavior: contain;
+}
+
+.search-center-marker {
+  background: transparent;
+  border: 0;
+  display: grid;
+  place-items: center;
+}
+
+.search-center-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #ef4444;
+  border: 2.5px solid #ffffff;
+  box-shadow:
+    0 0 0 5px rgba(239, 68, 68, 0.32),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}

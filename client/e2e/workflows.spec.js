@@ -53,6 +53,8 @@ test('gợi ý vị trí thời gian thực đặt tâm tìm kiếm trên bản 
   await expect(location).toHaveValue('Tòa nhà 103 Tạ Quang Bửu');
   await expect(page).toHaveURL(/centerLat=21\.005000/);
   await expect(page.locator('.map-panel-heading')).toContainText('Tòa nhà 103 Tạ Quang Bửu');
+  await page.getByRole('button', { name: 'Xem bản đồ', exact: true }).click();
+  await expect(page.locator('.search-center-marker')).toBeVisible();
 });
 test('đăng nhập, lưu phòng và giữ phiên sau khi tải lại', async ({ page }) => {
   await login(page);
@@ -141,6 +143,12 @@ test('bản đồ hiển thị và trang không tràn ngang', async ({ page }) =
   await page.getByRole('button', { name: 'Xem bản đồ', exact: true }).click();
   await expect(page.locator('.leaflet-container')).toBeVisible();
   await expect(page.locator('.price-marker').first()).toBeVisible();
+  const mapBox = await page.locator('.leaflet-container').boundingBox();
+  const beforeScrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+  await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(250);
+  expect(await page.evaluate(() => window.scrollY)).toBe(beforeScrollY);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
   ).toBeTruthy();

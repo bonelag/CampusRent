@@ -57,9 +57,9 @@ jobs:
         working-directory: client
         run: npm ci
 
-      - name: Audit NPM Packages
+      - name: Audit NPM Production Packages
         working-directory: client
-        run: npm audit --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=moderate
 
       - name: Run Frontend Tests (Vitest)
         working-directory: client

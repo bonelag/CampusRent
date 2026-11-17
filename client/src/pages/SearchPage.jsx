@@ -577,6 +577,7 @@ export default function SearchPage() {
           <RoomMap
             rooms={result.items}
             center={center}
+            centerLabel={locationLabel}
             radius={Number(params.get('radius'))}
             onSelectPoint={selectPoint}
             onSelectRoom={(room) =>
