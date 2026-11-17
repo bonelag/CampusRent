@@ -1,8 +1,8 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Heart, MapPin, Star, Navigation } from 'lucide-react';
+import { Heart, MapPin, Star, Navigation, ShieldAlert, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { money, fallbackImage, mediaUrl } from '../lib/api';
+import { amenities as amenityLabels, money, fallbackImage, mediaUrl } from '../lib/api';
 export default function RoomCard({ room, horizontal = false }) {
   const { saved, user, toggleSave, notify } = useApp();
   const [busy, setBusy] = useState(false);
@@ -37,11 +37,24 @@ export default function RoomCard({ room, horizontal = false }) {
           src={mediaUrl(room.coverImage)}
           alt=""
           loading="lazy"
+          decoding="async"
           onError={(e) => {
             e.currentTarget.onerror = null;
             e.currentTarget.src = fallbackImage;
           }}
         />
+        {room.isLowRated ? (
+          <span className="card-quality-pill is-low">
+            <ShieldAlert size={11} /> Đánh giá thấp
+          </span>
+        ) : (
+          room.reviewCount > 0 &&
+          room.averageRating >= 4.3 && (
+            <span className="card-quality-pill is-top">
+              <Sparkles size={11} /> Uy tín cao
+            </span>
+          )
+        )}
       </Link>
       <div className="card-body">
         <div className="card-topline">
@@ -81,6 +94,13 @@ export default function RoomCard({ room, horizontal = false }) {
           <MapPin size={12} />
           {room.address}
         </p>
+        {horizontal && room.amenities?.length > 0 && (
+          <div className="card-amenities-preview" aria-label="Tiện ích nổi bật">
+            {room.amenities.slice(0, 3).map((item) => (
+              <span key={item}>{amenityLabels[item] || item}</span>
+            ))}
+          </div>
+        )}
         <div className="card-bottom">
           <span className="card-price">
             <strong>{money(room.basePrice)}</strong>

@@ -40,7 +40,26 @@ public class ActivityController(CampusRentDbContext db) : ControllerBase
     {
         var uid = User.UserId();
         var bookings = await db.Bookings.Include(b => b.Room).Include(b => b.Student).Where(b => b.StudentId == uid || b.Room.LandlordId == uid).ToListAsync();
-        return Ok(ApiResponse<object>.Ok(bookings.OrderByDescending(b => b.CreatedAt).Select(b => new { b.Id, b.RoomId, roomTitle = b.Room.Title, b.Room.Address, b.VisitAt, b.Note, b.Status, b.StudentId, studentName = b.Student.FullName, phoneNumber = b.Student.PhoneNumber, isLandlord = b.Room.LandlordId == uid })));
+        return Ok(ApiResponse<object>.Ok(bookings.OrderByDescending(b => b.CreatedAt).Select(b => new
+        {
+            b.Id,
+            b.RoomId,
+            roomTitle = b.Room.Title,
+            b.Room.Address,
+            roomStatus = b.Room.Status,
+            roomExpiresAt = b.Room.ExpiresAt,
+            b.VisitAt,
+            b.Note,
+            b.Status,
+            b.ConfirmedAt,
+            b.ReminderSentAt,
+            b.CustomerNotClosedAt,
+            b.AutoClosedAt,
+            b.StudentId,
+            studentName = b.Student.FullName,
+            phoneNumber = b.Student.PhoneNumber,
+            isLandlord = b.Room.LandlordId == uid
+        })));
     }
     [HttpPost("rooms/{roomId:guid}/bookings")]
     public async Task<IActionResult> Book(Guid roomId, CreateBooking dto)
@@ -69,10 +88,56 @@ public class ActivityController(CampusRentDbContext db) : ControllerBase
         if (!owner && b.StudentId != User.UserId()) return Forbid();
         if (dto.Status is not ("CONFIRMED" or "CANCELLED") || dto.Status == "CONFIRMED" && !owner || b.Status == "CANCELLED" || b.VisitAt < DateTime.UtcNow)
             return BadRequest(ApiResponse<object>.Fail("Không thể thay đổi trạng thái lịch hẹn này."));
-        b.Status = dto.Status; await db.SaveChangesAsync(); return Ok(ApiResponse<object>.Ok(new { b.Id, b.Status }));
+        b.Status = dto.Status;
+        if (dto.Status == "CONFIRMED" && b.ConfirmedAt == null) b.ConfirmedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(); return Ok(ApiResponse<object>.Ok(new { b.Id, b.Status, b.ConfirmedAt }));
+    }
+
+    [HttpPatch("bookings/{id:guid}/not-closed")]
+    public async Task<IActionResult> MarkCustomerNotClosed(Guid id, BookingNotClosedDto dto)
+    {
+        var b = await db.Bookings.Include(x => x.Room).SingleOrDefaultAsync(x => x.Id == id);
+        if (b == null) return NotFound();
+        if (b.Room.LandlordId != User.UserId()) return Forbid();
+        if (b.Status == "CANCELLED" || (b.Status != "CONFIRMED" && b.ConfirmedAt == null))
+            return BadRequest(ApiResponse<object>.Fail("Chỉ áp dụng cho lịch hẹn đã được chủ trọ xác nhận."));
+
+        var now = DateTime.UtcNow;
+        if (dto.NotClosed)
+        {
+            b.CustomerNotClosedAt = now;
+            if (b.AutoClosedAt != null)
+            {
+                b.AutoClosedAt = null;
+                if (b.Room.Status == RoomStatus.HIDDEN && b.Room.ExpiresAt > now)
+                {
+                    b.Room.Status = RoomStatus.AVAILABLE;
+                    b.Room.UpdatedAt = now;
+                }
+                if (b.Status == "COMPLETED" && b.VisitAt.AddDays(3) > now)
+                    b.Status = "CONFIRMED";
+            }
+        }
+        else
+        {
+            b.CustomerNotClosedAt = null;
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            b.Id,
+            b.Status,
+            b.CustomerNotClosedAt,
+            b.AutoClosedAt,
+            roomStatus = b.Room.Status
+        }, dto.NotClosed
+            ? "Đã xác nhận khách chưa chốt — phòng tiếp tục hiển thị."
+            : "Đã hủy đánh dấu khách chưa chốt."));
     }
 }
 public record CreateBooking(DateTimeOffset VisitAt, [MaxLength(1000)] string Note = "");
 public record BookingStatus(string Status);
+public record BookingNotClosedDto(bool NotClosed = true);
 
 

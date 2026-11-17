@@ -150,6 +150,18 @@ export default function MyRoomsPage() {
                     <strong>
                       {money(room.basePrice)} <small>/ tháng · {room.area} m²</small>
                     </strong>
+                    {room.expiresAt && (
+                      <p className="managed-expiry-note">
+                        {(() => {
+                          const days = Math.ceil(
+                            (new Date(room.expiresAt) - Date.now()) / 86400000
+                          );
+                          if (days <= 0)
+                            return 'Đã hết hạn hiển thị tối đa 30 ngày — cần bật lại thủ công';
+                          return `Hiển thị tối đa 30 ngày · còn ${days} ngày (đến ${new Date(room.expiresAt).toLocaleDateString('vi-VN')})`;
+                        })()}
+                      </p>
+                    )}
                     <div className="managed-actions">
                       {room.status === 'AVAILABLE' && (
                         <button
@@ -164,11 +176,18 @@ export default function MyRoomsPage() {
                         <Pencil size={13} /> Chỉnh sửa
                       </Link>
                       <button
-                        className="button soft-primary small"
+                        className={
+                          room.status !== 'AVAILABLE'
+                            ? 'button primary small'
+                            : 'button soft-primary small'
+                        }
                         disabled={busy === room.id}
                         onClick={() => status(room, 'AVAILABLE', true)}
                       >
-                        <RefreshCw size={13} /> Gia hạn +30 ngày
+                        <RefreshCw size={13} />{' '}
+                        {room.status !== 'AVAILABLE'
+                          ? 'Bật hiển thị lại (30 ngày)'
+                          : 'Gia hạn +30 ngày'}
                       </button>
                       {room.status === 'AVAILABLE' && (
                         <button

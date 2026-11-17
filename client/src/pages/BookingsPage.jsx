@@ -42,6 +42,25 @@ export default function BookingsPage() {
       setBusy('');
     }
   }
+  async function toggleNotClosed(booking, notClosed) {
+    setBusy(booking.id);
+    try {
+      const res = await api('/bookings/' + booking.id + '/not-closed', {
+        method: 'PATCH',
+        body: { notClosed },
+      });
+      notify(
+        res?.customerNotClosedAt
+          ? 'Đã xác nhận khách chưa chốt — bài đăng tiếp tục hiển thị.'
+          : 'Đã bỏ đánh dấu khách chưa chốt.'
+      );
+      await load();
+    } catch (e) {
+      notify(e.message, 'error');
+    } finally {
+      setBusy('');
+    }
+  }
   const shown = items?.filter((b) => filter === 'ALL' || b.status === filter);
   return (
     <div className="container page-shell">
@@ -109,6 +128,34 @@ export default function BookingsPage() {
                   </p>
                 )}
                 {b.note && <div className="booking-note">“{b.note}”</div>}
+                {b.isLandlord &&
+                  (b.status === 'CONFIRMED' || b.confirmedAt) &&
+                  b.status !== 'CANCELLED' && (
+                    <div className="booking-followup">
+                      {b.autoClosedAt ? (
+                        <p className="booking-followup-warn">
+                          Đã quá ngày hẹn 3 ngày mà chưa đánh dấu khách chưa chốt — bài đăng đã tự
+                          động ẩn. Tích bên dưới hoặc gia hạn ở Phòng của tôi để bật lại.
+                        </p>
+                      ) : (
+                        <p className="booking-followup-hint">
+                          {b.reminderSentAt
+                            ? 'Đã gửi email nhắc lịch hẹn · '
+                            : 'Tới ngày hẹn hệ thống sẽ gửi email nhắc · '}
+                          Nếu quá ngày hẹn +3 ngày chưa tích “Khách chưa chốt”, bài đăng sẽ tự ẩn.
+                        </p>
+                      )}
+                      <label className="booking-not-closed-toggle">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(b.customerNotClosedAt)}
+                          disabled={busy === b.id}
+                          onChange={(e) => toggleNotClosed(b, e.target.checked)}
+                        />
+                        <span>Khách chưa chốt (giữ bài đăng tiếp tục hiển thị)</span>
+                      </label>
+                    </div>
+                  )}
               </div>
               <div className="booking-item-actions">
                 {b.status !== 'CANCELLED' && new Date(b.visitAt) > new Date() && (

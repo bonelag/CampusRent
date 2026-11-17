@@ -28,13 +28,25 @@ namespace CampusRent.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AutoClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CustomerNotClosedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Note")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("uuid");
@@ -337,6 +349,8 @@ namespace CampusRent.Server.Migrations
 
                     b.HasIndex("Latitude", "Longitude");
 
+                    b.HasIndex("Status", "ExpiresAt");
+
                     b.ToTable("rooms");
                 });
 
@@ -377,6 +391,63 @@ namespace CampusRent.Server.Migrations
                     b.HasIndex("RoomId");
 
                     b.ToTable("room_images");
+                });
+
+            modelBuilder.Entity("CampusRent.Server.Models.SmtpSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("FromEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("from_email");
+
+                    b.Property<string>("FromName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("from_name");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("password");
+
+                    b.Property<int>("Port")
+                        .HasColumnType("integer")
+                        .HasColumnName("port");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("UseSsl")
+                        .HasColumnType("boolean")
+                        .HasColumnName("use_ssl");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("smtp_settings");
                 });
 
             modelBuilder.Entity("CampusRent.Server.Models.University", b =>
@@ -445,6 +516,23 @@ namespace CampusRent.Server.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("email");
 
+                    b.Property<int>("EmailVerificationAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("email_verification_attempts");
+
+                    b.Property<string>("EmailVerificationCodeHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("email_verification_code_hash");
+
+                    b.Property<DateTime?>("EmailVerificationExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verification_expires_at");
+
+                    b.Property<DateTime?>("EmailVerificationSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verification_sent_at");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -454,6 +542,10 @@ namespace CampusRent.Server.Migrations
                     b.Property<bool>("IsEduVerified")
                         .HasColumnType("boolean")
                         .HasColumnName("is_edu_verified");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_email_verified");
 
                     b.Property<string>("Password")
                         .IsRequired()

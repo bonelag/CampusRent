@@ -6,6 +6,7 @@ using CampusRent.Server.DTOs.LandlordRequests;
 using CampusRent.Server.DTOs.Reports;
 using CampusRent.Server.DTOs.Universities;
 using CampusRent.Server.Models;
+using CampusRent.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,55 +14,75 @@ using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
 
 [ApiController, Route("api/admin"), Authorize(Roles = "ADMIN")]
-public class AdminController(CampusRentDbContext db) : ControllerBase
+public class AdminController(CampusRentDbContext db, IEmailService emailService) : ControllerBase
 {
     [HttpGet("stats")]
     public async Task<IActionResult> Stats()
     {
         var now = DateTime.UtcNow;
         var activityStart = now.Date.AddDays(-6);
-        var userDates = await db.Users.AsNoTracking().Where(item => item.CreatedAt >= activityStart).Select(item => item.CreatedAt).ToListAsync();
-        var roomDates = await db.Rooms.AsNoTracking().Where(item => item.CreatedAt >= activityStart).Select(item => item.CreatedAt).ToListAsync();
-        var bookingDates = await db.Bookings.AsNoTracking().Where(item => item.CreatedAt >= activityStart).Select(item => item.CreatedAt).ToListAsync();
-        var reportDates = await db.Reports.AsNoTracking().Where(item => item.CreatedAt >= activityStart).Select(item => item.CreatedAt).ToListAsync();
+
+        var users = await db.Users.AsNoTracking()
+            .Select(u => new { u.Role, u.IsEmailVerified, u.CreatedAt })
+            .ToListAsync();
+        var rooms = await db.Rooms.AsNoTracking()
+            .Select(r => new { r.Status, r.ExpiresAt, r.CreatedAt })
+            .ToListAsync();
+        var bookings = await db.Bookings.AsNoTracking()
+            .Select(b => new { b.Status, b.CreatedAt })
+            .ToListAsync();
+        var reports = await db.Reports.AsNoTracking()
+            .Select(r => new { r.Status, r.CreatedAt })
+            .ToListAsync();
+        var reviewFlags = await db.Reviews.AsNoTracking().Select(item => item.IsFlagged).ToListAsync();
+        var flaggedReviews = reviewFlags.Count(x => x);
+        var reviews = reviewFlags.Count;
+        var favorites = await db.Favorites.CountAsync();
+        var landlordRequests = await db.LandlordRequests.AsNoTracking().Select(x => x.Status).ToListAsync();
+        var universities = await db.Universities.CountAsync();
+        var smtp = await emailService.GetEffectiveSettingsAsync();
+
         var activity = Enumerable.Range(0, 7).Select(offset =>
         {
             var day = activityStart.AddDays(offset);
+            var dayEnd = day.AddDays(1);
             return new
             {
                 date = day.ToString("dd/MM"),
-                users = userDates.Count(value => value.Date == day),
-                rooms = roomDates.Count(value => value.Date == day),
-                bookings = bookingDates.Count(value => value.Date == day),
-                reports = reportDates.Count(value => value.Date == day)
+                users = users.Count(x => x.CreatedAt >= day && x.CreatedAt < dayEnd),
+                rooms = rooms.Count(x => x.CreatedAt >= day && x.CreatedAt < dayEnd),
+                bookings = bookings.Count(x => x.CreatedAt >= day && x.CreatedAt < dayEnd),
+                reports = reports.Count(x => x.CreatedAt >= day && x.CreatedAt < dayEnd)
             };
         });
 
-        var pendingReports = await db.Reports.CountAsync(item => item.Status == ReportStatus.PENDING);
-        var flaggedReviews = await db.Reviews.CountAsync(item => item.IsFlagged);
-        var pendingLandlordRequests = await db.LandlordRequests.CountAsync(item => item.Status == LandlordRequestStatus.PENDING);
-        var pendingBookings = await db.Bookings.CountAsync(item => item.Status == "PENDING");
+        var pendingReports = reports.Count(x => x.Status == ReportStatus.PENDING);
+        var pendingLandlordRequests = landlordRequests.Count(x => x == LandlordRequestStatus.PENDING);
+        var pendingBookings = bookings.Count(x => x.Status == "PENDING");
+
         return Ok(ApiResponse<object>.Ok(new
         {
-            users = await db.Users.CountAsync(),
-            students = await db.Users.CountAsync(item => item.Role == Role.STUDENT),
-            landlords = await db.Users.CountAsync(item => item.Role == Role.LANDLORD),
-            administrators = await db.Users.CountAsync(item => item.Role == Role.ADMIN),
-            rooms = await db.Rooms.CountAsync(),
-            availableRooms = await db.Rooms.CountAsync(item => item.Status == RoomStatus.AVAILABLE && item.ExpiresAt > now),
-            rentedRooms = await db.Rooms.CountAsync(item => item.Status == RoomStatus.RENTED),
-            hiddenRooms = await db.Rooms.CountAsync(item => item.Status == RoomStatus.HIDDEN || item.Status == RoomStatus.AVAILABLE && item.ExpiresAt <= now),
-            bookings = await db.Bookings.CountAsync(),
+            users = users.Count,
+            verifiedEmails = users.Count(x => x.IsEmailVerified),
+            smtpConfigured = smtp.Enabled && !string.IsNullOrWhiteSpace(smtp.Username) && !string.IsNullOrWhiteSpace(smtp.Password),
+            students = users.Count(x => x.Role == Role.STUDENT),
+            landlords = users.Count(x => x.Role == Role.LANDLORD),
+            administrators = users.Count(x => x.Role == Role.ADMIN),
+            rooms = rooms.Count,
+            availableRooms = rooms.Count(x => x.Status == RoomStatus.AVAILABLE && x.ExpiresAt > now),
+            rentedRooms = rooms.Count(x => x.Status == RoomStatus.RENTED),
+            hiddenRooms = rooms.Count(x => x.Status == RoomStatus.HIDDEN || (x.Status == RoomStatus.AVAILABLE && x.ExpiresAt <= now)),
+            bookings = bookings.Count,
             pendingBookings,
-            confirmedBookings = await db.Bookings.CountAsync(item => item.Status == "CONFIRMED"),
-            favorites = await db.Favorites.CountAsync(),
-            reviews = await db.Reviews.CountAsync(),
+            confirmedBookings = bookings.Count(x => x.Status == "CONFIRMED"),
+            favorites,
+            reviews,
             flaggedReviews,
-            reports = await db.Reports.CountAsync(),
+            reports = reports.Count,
             pendingReports,
-            landlordRequests = await db.LandlordRequests.CountAsync(),
+            landlordRequests = landlordRequests.Count,
             pendingLandlordRequests,
-            universities = await db.Universities.CountAsync(),
+            universities,
             moderationBacklog = pendingReports + flaggedReviews + pendingLandlordRequests + pendingBookings,
             activity
         }));
@@ -84,6 +105,7 @@ public class AdminController(CampusRentDbContext db) : ControllerBase
             user.FullName,
             user.Role,
             user.IsEduVerified,
+            user.IsEmailVerified,
             user.CreatedAt,
             user.UpdatedAt,
             RoomsCount = user.Rooms.Count,
@@ -96,6 +118,30 @@ public class AdminController(CampusRentDbContext db) : ControllerBase
     [HttpPut("users/{id:guid}")]
     public IActionResult BlockProfileEditing(Guid id) => StatusCode(StatusCodes.Status403Forbidden,
         ApiResponse<object>.Fail("Quản trị viên không được sửa thông tin cá nhân hoặc vai trò của người dùng; chỉ có thể đặt lại mật khẩu."));
+
+    [HttpPatch("users/{id:guid}/verification")]
+    public async Task<IActionResult> UpdateUserVerification(Guid id, AdminUserVerificationDto dto)
+    {
+        var user = await db.Users.FindAsync(id);
+        if (user == null) return NotFound(ApiResponse<object>.Fail("Không tìm thấy người dùng."));
+        user.IsEmailVerified = dto.IsEmailVerified;
+        user.IsEduVerified = dto.IsEduVerified;
+        if (dto.IsEmailVerified)
+        {
+            user.EmailVerificationCodeHash = null;
+            user.EmailVerificationExpiresAt = null;
+            user.EmailVerificationAttempts = 0;
+        }
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            user.Id,
+            user.IsEmailVerified,
+            user.IsEduVerified,
+            user.UpdatedAt
+        }, "Đã cập nhật trạng thái xác minh tài khoản."));
+    }
 
     [HttpPut("users/{id:guid}/password")]
     public async Task<IActionResult> ResetPassword(Guid id, AdminResetPasswordDto dto)
@@ -430,4 +476,78 @@ public class AdminController(CampusRentDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpGet("smtp")]
+    public async Task<IActionResult> GetSmtpSettings(CancellationToken ct)
+    {
+        var s = await emailService.GetEffectiveSettingsAsync(ct);
+        return Ok(ApiResponse<object>.Ok(SmtpResponse(s)));
+    }
+
+    [HttpPut("smtp")]
+    public async Task<IActionResult> UpdateSmtpSettings(SmtpSettingsUpdateDto dto, CancellationToken ct)
+    {
+        var existing = await db.SmtpSettings.SingleOrDefaultAsync(x => x.Id == 1, ct);
+        if (existing == null)
+        {
+            existing = new SmtpSetting { Id = 1 };
+            db.SmtpSettings.Add(existing);
+        }
+
+        existing.Enabled = dto.Enabled;
+        existing.Host = dto.Host.Trim();
+        existing.Port = dto.Port;
+        existing.UseSsl = dto.UseSsl;
+        existing.Username = dto.Username.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Password))
+            existing.Password = emailService.ProtectSecret(dto.Password.Trim());
+        else if (string.IsNullOrWhiteSpace(existing.Password))
+        {
+            var effective = await emailService.GetEffectiveSettingsAsync(ct);
+            if (!string.IsNullOrWhiteSpace(effective.Password))
+                existing.Password = emailService.ProtectSecret(emailService.UnprotectSecret(effective.Password));
+        }
+
+        existing.FromEmail = string.IsNullOrWhiteSpace(dto.FromEmail) ? existing.Username : dto.FromEmail.Trim();
+        existing.FromName = string.IsNullOrWhiteSpace(dto.FromName) ? "CampusRent" : dto.FromName.Trim();
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        if (existing.Enabled && (string.IsNullOrWhiteSpace(existing.Host) || string.IsNullOrWhiteSpace(existing.Username) || string.IsNullOrWhiteSpace(existing.Password)))
+            return BadRequest(ApiResponse<object>.Fail("Cần nhập đầy đủ SMTP Host, Tài khoản Gmail và Mật khẩu ứng dụng khi bật SMTP."));
+
+        await db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<object>.Ok(SmtpResponse(existing), "Đã lưu cấu hình máy chủ SMTP."));
+    }
+
+    [HttpPost("smtp/test")]
+    public async Task<IActionResult> SendSmtpTestEmail(AdminTestEmailDto? dto, CancellationToken ct)
+    {
+        var target = dto?.ToEmail?.Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            var admin = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == User.UserId(), ct);
+            target = admin?.Email;
+        }
+        if (string.IsNullOrWhiteSpace(target) || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(target))
+            return BadRequest(ApiResponse<object>.Fail("Địa chỉ email nhận thử không hợp lệ."));
+
+        var result = await emailService.SendTestEmailAsync(target, null, ct);
+        if (!result.Sent)
+            return BadRequest(ApiResponse<object>.Fail(result.Error ?? "Gửi email kiểm tra thất bại."));
+
+        return Ok(ApiResponse<object>.Ok(new { toEmail = target }, $"Đã gửi email kiểm tra thành công tới {target}."));
+    }
+
+    private object SmtpResponse(SmtpSetting s) => new
+    {
+        s.Enabled,
+        s.Host,
+        s.Port,
+        s.UseSsl,
+        s.Username,
+        hasPassword = !string.IsNullOrWhiteSpace(emailService.UnprotectSecret(s.Password)),
+        s.FromEmail,
+        s.FromName,
+        s.UpdatedAt
+    };
 }

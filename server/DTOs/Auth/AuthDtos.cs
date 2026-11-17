@@ -43,5 +43,12 @@ public class UserProfileDto
     public string? Avatar { get; set; }
     public Role Role { get; set; }
     public bool IsEduVerified { get; set; }
+    public bool IsEmailVerified { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class VerifyEmailDto
+{
+    [Required, StringLength(12, MinimumLength = 4)]
+    public string Code { get; set; } = string.Empty;
 }

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using CampusRent.Server.Data;
 using CampusRent.Server.DTOs.Auth;
 using CampusRent.Server.DTOs.Common;
@@ -9,7 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 namespace CampusRent.Server.Controllers;
 [ApiController, Route("api/auth")]
-public class AuthController(CampusRentDbContext db, ITokenService tokens) : ControllerBase
+public class AuthController(CampusRentDbContext db, ITokenService tokens, IEmailService emailService, IHostEnvironment environment) : ControllerBase
 {
     [HttpPost("register"), EnableRateLimiting("auth")]
     public async Task<IActionResult> Register(RegisterRequestDto dto)
@@ -70,6 +72,94 @@ public class AuthController(CampusRentDbContext db, ITokenService tokens) : Cont
         await db.SaveChangesAsync();
         return Ok(ApiResponse<AuthResponseDto>.Ok(new() { Token = tokens.GenerateToken(user), User = Mapping.Profile(user) }));
     }
+
+    [Authorize, HttpPost("send-verification"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> SendVerificationCode(CancellationToken ct)
+    {
+        var user = await db.Users.FindAsync([User.UserId()], ct);
+        if (user == null) return Unauthorized();
+        if (user.IsEmailVerified)
+            return BadRequest(ApiResponse<object>.Fail("Email tài khoản đã được xác minh."));
+
+        var now = DateTime.UtcNow;
+        if (user.EmailVerificationSentAt.HasValue && now - user.EmailVerificationSentAt.Value < TimeSpan.FromSeconds(60))
+        {
+            var waitSeconds = Math.Max(1, (int)Math.Ceiling(60 - (now - user.EmailVerificationSentAt.Value).TotalSeconds));
+            return StatusCode(StatusCodes.Status429TooManyRequests,
+                ApiResponse<object>.Fail($"Vui lòng đợi {waitSeconds} giây trước khi gửi lại mã xác minh."));
+        }
+
+        var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        user.EmailVerificationCodeHash = HashVerificationCode(user.Id, code);
+        user.EmailVerificationExpiresAt = now.AddMinutes(15);
+        user.EmailVerificationSentAt = now;
+        user.EmailVerificationAttempts = 0;
+
+        var delivery = await emailService.SendVerificationCodeAsync(user.Email, user.FullName, code, ct);
+        if (!delivery.Sent && !delivery.IsSimulated)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail(delivery.Error ?? "Không thể gửi email xác minh. Vui lòng thử lại sau."));
+
+        await db.SaveChangesAsync(ct);
+        var exposePreview = delivery.IsSimulated && (environment.IsDevelopment() || environment.IsEnvironment("Testing"));
+        var message = delivery.Sent
+            ? $"Đã gửi mã xác minh 6 chữ số tới {user.Email}."
+            : "SMTP chưa bật (chế độ thử nghiệm): hãy dùng mã xem trước để xác minh.";
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            sent = delivery.Sent,
+            simulated = delivery.IsSimulated,
+            expiresAt = user.EmailVerificationExpiresAt,
+            previewCode = exposePreview ? code : null
+        }, message));
+    }
+
+    [Authorize, HttpPost("verify-email"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto, CancellationToken ct)
+    {
+        var user = await db.Users.FindAsync([User.UserId()], ct);
+        if (user == null) return Unauthorized();
+        if (user.IsEmailVerified)
+            return Ok(ApiResponse<UserProfileDto>.Ok(Mapping.Profile(user), "Email đã được xác minh trước đó."));
+
+        var now = DateTime.UtcNow;
+        if (string.IsNullOrEmpty(user.EmailVerificationCodeHash) || !user.EmailVerificationExpiresAt.HasValue || user.EmailVerificationExpiresAt.Value <= now)
+            return BadRequest(ApiResponse<object>.Fail("Mã xác minh đã hết hạn hoặc chưa được tạo. Vui lòng gửi lại mã mới."));
+
+        var submittedHash = HashVerificationCode(user.Id, dto.Code.Trim());
+        var expectedBytes = Encoding.UTF8.GetBytes(user.EmailVerificationCodeHash);
+        var actualBytes = Encoding.UTF8.GetBytes(submittedHash);
+        if (!CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes))
+        {
+            user.EmailVerificationAttempts++;
+            if (user.EmailVerificationAttempts >= 5)
+            {
+                user.EmailVerificationCodeHash = null;
+                user.EmailVerificationExpiresAt = null;
+                await db.SaveChangesAsync(ct);
+                return BadRequest(ApiResponse<object>.Fail("Bạn đã nhập sai quá 5 lần. Vui lòng yêu cầu gửi lại mã mới."));
+            }
+            await db.SaveChangesAsync(ct);
+            return BadRequest(ApiResponse<object>.Fail("Mã xác minh không chính xác."));
+        }
+
+        user.IsEmailVerified = true;
+        if (Models.User.IsEduDomain(user.Email))
+            user.IsEduVerified = true;
+        user.EmailVerificationCodeHash = null;
+        user.EmailVerificationExpiresAt = null;
+        user.EmailVerificationAttempts = 0;
+        user.UpdatedAt = now;
+        await db.SaveChangesAsync(ct);
+
+        var msg = user.IsEduVerified
+            ? "Đã xác minh email thành công và kích hoạt huy hiệu Sinh viên (.edu)!"
+            : "Đã xác minh địa chỉ email thành công!";
+        return Ok(ApiResponse<UserProfileDto>.Ok(Mapping.Profile(user), msg));
+    }
+
+    private static string HashVerificationCode(Guid userId, string code) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{userId}:{code}")));
 }
 public record ProfileUpdate([System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(150)] string FullName, [System.ComponentModel.DataAnnotations.MaxLength(20)] string? PhoneNumber);
 public record ChangePasswordDto(

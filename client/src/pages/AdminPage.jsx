@@ -6,7 +6,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  BadgeCheck,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -25,12 +24,14 @@ import {
   LayoutDashboard,
   LockKeyhole,
   LogOut,
+  Mail,
   Menu,
   Moon,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
   Star,
   Sun,
@@ -53,6 +54,7 @@ const views = [
   { key: 'reports', label: 'Báo cáo', icon: Flag, group: 'Kiểm duyệt' },
   { key: 'requests', label: 'Yêu cầu chủ trọ', icon: KeyRound, group: 'Kiểm duyệt' },
   { key: 'universities', label: 'Trường đại học', icon: GraduationCap, group: 'Hệ thống' },
+  { key: 'settings', label: 'Cài đặt SMTP', icon: Mail, group: 'Hệ thống' },
 ];
 
 const viewLabels = Object.fromEntries(views.map((item) => [item.key, item.label]));
@@ -576,24 +578,47 @@ export default function AdminPage() {
     latitude: '',
     longitude: '',
   });
+  const [smtpForm, setSmtpForm] = useState({
+    enabled: false,
+    host: 'smtp.gmail.com',
+    port: 587,
+    useSsl: true,
+    username: '',
+    password: '',
+    hasPassword: false,
+    fromEmail: '',
+    fromName: 'CampusRent',
+  });
+  const [testEmail, setTestEmail] = useState('');
 
   const load = useCallback(async () => {
     const version = ++loadVersion.current;
     setError('');
     setRefreshing(true);
     try {
-      const [stats, users, rooms, bookings, favorites, reviews, reports, requests, universities] =
-        await Promise.all([
-          api('/admin/stats'),
-          api('/admin/users'),
-          api('/admin/rooms'),
-          api('/admin/bookings'),
-          api('/admin/favorites'),
-          api('/admin/reviews'),
-          api('/admin/reports'),
-          api('/admin/landlord-requests'),
-          api('/admin/universities'),
-        ]);
+      const [
+        stats,
+        users,
+        rooms,
+        bookings,
+        favorites,
+        reviews,
+        reports,
+        requests,
+        universities,
+        smtp,
+      ] = await Promise.all([
+        api('/admin/stats'),
+        api('/admin/users'),
+        api('/admin/rooms'),
+        api('/admin/bookings'),
+        api('/admin/favorites'),
+        api('/admin/reviews'),
+        api('/admin/reports'),
+        api('/admin/landlord-requests'),
+        api('/admin/universities'),
+        api('/admin/smtp').catch(() => null),
+      ]);
       if (version !== loadVersion.current) return;
       setData({
         stats,
@@ -605,7 +630,22 @@ export default function AdminPage() {
         reports,
         requests,
         universities,
+        smtp,
       });
+      if (smtp) {
+        setSmtpForm((prev) => ({
+          ...prev,
+          enabled: Boolean(smtp.enabled),
+          host: smtp.host || 'smtp.gmail.com',
+          port: Number(smtp.port) || 587,
+          useSsl: smtp.useSsl !== false,
+          username: smtp.username || '',
+          password: '',
+          hasPassword: Boolean(smtp.hasPassword),
+          fromEmail: smtp.fromEmail || '',
+          fromName: smtp.fromName || 'CampusRent',
+        }));
+      }
       setLastUpdated(new Date());
     } catch (reason) {
       if (version === loadVersion.current) setError(reason.message);
@@ -618,8 +658,19 @@ export default function AdminPage() {
     load();
   }, [load]);
 
+  const lastUpdatedRef = useRef(null);
+
   useEffect(() => {
-    const refreshOnFocus = () => load();
+    lastUpdatedRef.current = lastUpdated;
+  }, [lastUpdated]);
+
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (lastUpdatedRef.current && Date.now() - lastUpdatedRef.current.getTime() < 30000) {
+        return;
+      }
+      load();
+    };
     window.addEventListener('focus', refreshOnFocus);
     return () => window.removeEventListener('focus', refreshOnFocus);
   }, [load]);
@@ -702,6 +753,47 @@ export default function AdminPage() {
     );
   }
 
+  async function saveSmtp(event) {
+    event.preventDefault();
+    await mutate(
+      'smtp-save',
+      '/admin/smtp',
+      {
+        method: 'PUT',
+        body: {
+          enabled: smtpForm.enabled,
+          host: smtpForm.host.trim(),
+          port: Number(smtpForm.port),
+          useSsl: smtpForm.useSsl,
+          username: smtpForm.username.trim(),
+          password: smtpForm.password.trim() || null,
+          fromEmail: smtpForm.fromEmail.trim(),
+          fromName: smtpForm.fromName.trim() || 'CampusRent',
+        },
+      },
+      'Đã lưu cấu hình Gmail SMTP.'
+    );
+  }
+
+  async function sendSmtpTest(event) {
+    event.preventDefault();
+    if (mutationInFlight.current) return;
+    mutationInFlight.current = true;
+    setBusy('smtp-test');
+    try {
+      const res = await api('/admin/smtp/test', {
+        method: 'POST',
+        body: { toEmail: testEmail.trim() || user?.email || '' },
+      });
+      notify(`Đã gửi email kiểm tra tới ${res?.toEmail || testEmail || user?.email}.`);
+    } catch (reason) {
+      notify(reason.message, 'error');
+    } finally {
+      mutationInFlight.current = false;
+      setBusy('');
+    }
+  }
+
   const navBadges = data
     ? {
         bookings: data.stats.pendingBookings,
@@ -764,15 +856,63 @@ export default function AdminPage() {
             },
             {
               label: 'Xác thực',
-              sortValue: (item) => Number(item.isEduVerified),
-              render: (item) =>
-                item.isEduVerified ? (
-                  <span className="adminator-verified">
-                    <BadgeCheck size={14} /> Edu verified
-                  </span>
-                ) : (
-                  <span className="adminator-subtle">Chưa xác thực</span>
-                ),
+              sortValue: (item) => Number(item.isEduVerified) * 2 + Number(item.isEmailVerified),
+              render: (item) => (
+                <div className="adminator-verify-badges">
+                  <label className="adminator-verify-toggle">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.isEmailVerified)}
+                      aria-label={'Xác minh email thường cho ' + item.fullName}
+                      disabled={Boolean(busy)}
+                      onChange={(e) =>
+                        mutate(
+                          'verify-email-' + item.id,
+                          '/admin/users/' + item.id + '/verification',
+                          {
+                            method: 'PATCH',
+                            body: {
+                              isEmailVerified: e.target.checked,
+                              isEduVerified: Boolean(item.isEduVerified),
+                            },
+                          },
+                          e.target.checked
+                            ? `Đã xác minh email cho ${item.fullName}.`
+                            : `Đã bỏ xác minh email cho ${item.fullName}.`
+                        )
+                      }
+                    />
+                    <span>{item.isEmailVerified ? 'Email đã xác minh' : 'Email thường'}</span>
+                  </label>
+                  <label className="adminator-verify-toggle is-edu">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.isEduVerified)}
+                      aria-label={'Xác minh email .edu cho ' + item.fullName}
+                      disabled={Boolean(busy)}
+                      onChange={(e) =>
+                        mutate(
+                          'verify-edu-' + item.id,
+                          '/admin/users/' + item.id + '/verification',
+                          {
+                            method: 'PATCH',
+                            body: {
+                              isEmailVerified: e.target.checked
+                                ? true
+                                : Boolean(item.isEmailVerified),
+                              isEduVerified: e.target.checked,
+                            },
+                          },
+                          e.target.checked
+                            ? `Đã cấp xác minh Sinh viên .edu cho ${item.fullName}.`
+                            : `Đã bỏ xác minh Sinh viên .edu cho ${item.fullName}.`
+                        )
+                      }
+                    />
+                    <span>Sinh viên .edu</span>
+                  </label>
+                </div>
+              ),
             },
             {
               label: 'Tham gia',
@@ -1532,6 +1672,174 @@ export default function AdminPage() {
             },
           ]}
         />
+      );
+
+    if (view === 'settings')
+      return (
+        <section className="adminator-settings-grid">
+          <article className="adminator-card">
+            <header className="adminator-card-head">
+              <div>
+                <span className="adminator-eyebrow">Cấu hình hệ thống</span>
+                <h2>Cài đặt Gmail SMTP (Gửi mã xác minh)</h2>
+              </div>
+              <button
+                type="button"
+                className="button outline small"
+                onClick={() =>
+                  setSmtpForm((prev) => ({
+                    ...prev,
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    useSsl: true,
+                    fromName: prev.fromName || 'CampusRent',
+                  }))
+                }
+              >
+                Điền nhanh Gmail SMTP
+              </button>
+            </header>
+            <form className="form adminator-smtp-form" onSubmit={saveSmtp}>
+              <label className="adminator-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={smtpForm.enabled}
+                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, enabled: e.target.checked }))}
+                />
+                <span>Kích hoạt gửi email xác minh qua máy chủ SMTP</span>
+              </label>
+
+              <div className="form-row">
+                <label>
+                  Máy chủ SMTP (Host)
+                  <input
+                    required
+                    value={smtpForm.host}
+                    placeholder="smtp.gmail.com"
+                    onChange={(e) => setSmtpForm((prev) => ({ ...prev, host: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Cổng (Port)
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={65535}
+                    value={smtpForm.port}
+                    onChange={(e) => setSmtpForm((prev) => ({ ...prev, port: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <label className="adminator-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={smtpForm.useSsl}
+                  onChange={(e) => setSmtpForm((prev) => ({ ...prev, useSsl: e.target.checked }))}
+                />
+                <span>Sử dụng kết nối bảo mật SSL / STARTTLS (Khuyến nghị với Gmail cổng 587)</span>
+              </label>
+
+              <div className="form-row">
+                <label>
+                  Tài khoản Gmail / SMTP Username
+                  <input
+                    value={smtpForm.username}
+                    placeholder="your-app@gmail.com"
+                    onChange={(e) => setSmtpForm((prev) => ({ ...prev, username: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Mật khẩu ứng dụng Gmail (App Password)
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={smtpForm.password}
+                    placeholder={
+                      smtpForm.hasPassword
+                        ? 'Đã lưu mật khẩu (để trống nếu giữ nguyên)'
+                        : 'Nhập App Password 16 ký tự'
+                    }
+                    onChange={(e) => setSmtpForm((prev) => ({ ...prev, password: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <div className="form-row">
+                <label>
+                  Email hiển thị (From Email)
+                  <input
+                    type="email"
+                    value={smtpForm.fromEmail}
+                    placeholder="noreply@campusrent.vn"
+                    onChange={(e) =>
+                      setSmtpForm((prev) => ({ ...prev, fromEmail: e.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  Tên người gửi (From Name)
+                  <input
+                    value={smtpForm.fromName}
+                    placeholder="CampusRent"
+                    onChange={(e) => setSmtpForm((prev) => ({ ...prev, fromName: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="submit"
+                  className="adminator-primary-button"
+                  disabled={busy === 'smtp-save'}
+                >
+                  <Check size={15} /> {busy === 'smtp-save' ? 'Đang lưu…' : 'Lưu cấu hình SMTP'}
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <article className="adminator-card">
+            <header className="adminator-card-head">
+              <div>
+                <span className="adminator-eyebrow">Kiểm tra kết nối</span>
+                <h2>Gửi email thử nghiệm</h2>
+              </div>
+              <Send size={18} />
+            </header>
+            <p className="muted">
+              Sau khi lưu cấu hình Gmail SMTP và App Password, gửi một email kiểm tra để xác nhận
+              máy chủ gửi mã OTP hoạt động thông suốt trước khi mở cho sinh viên đăng ký.
+            </p>
+            <form className="form" onSubmit={sendSmtpTest}>
+              <label>
+                Email nhận thư thử
+                <input
+                  type="email"
+                  value={testEmail}
+                  placeholder={user?.email || 'admin@campusrent.vn'}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                />
+              </label>
+              <button
+                type="submit"
+                className="button outline small"
+                disabled={busy === 'smtp-test'}
+              >
+                <Send size={14} /> {busy === 'smtp-test' ? 'Đang gửi…' : 'Gửi email kiểm tra'}
+              </button>
+            </form>
+            <div className="adminator-smtp-guide">
+              <strong>Hướng dẫn lấy App Password Gmail:</strong>
+              <ol>
+                <li>Mở Tài khoản Google → Bảo mật → Bật Xác minh 2 bước.</li>
+                <li>Tìm mục Mật khẩu ứng dụng (App passwords), tạo mật khẩu mới cho CampusRent.</li>
+                <li>Dán chuỗi 16 ký tự vào ô Mật khẩu ứng dụng và nhấn Lưu cấu hình SMTP.</li>
+              </ol>
+            </div>
+          </article>
+        </section>
       );
 
     return (

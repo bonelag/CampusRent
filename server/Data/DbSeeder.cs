@@ -78,7 +78,8 @@ public static class DbSeeder
             FullName = "Quản Trị Viên",
             PhoneNumber = "0901234567",
             Role = Role.ADMIN,
-            IsEduVerified = false
+            IsEduVerified = false,
+            IsEmailVerified = true
         };
 
         var landlord1 = new User
@@ -88,7 +89,8 @@ public static class DbSeeder
             FullName = "Bác Ba Chủ Trọ",
             PhoneNumber = "0912345678",
             Role = Role.LANDLORD,
-            IsEduVerified = false
+            IsEduVerified = false,
+            IsEmailVerified = true
         };
 
         var landlord2 = new User
@@ -98,7 +100,8 @@ public static class DbSeeder
             FullName = "Cô Mai Cầu Giấy",
             PhoneNumber = "0987654321",
             Role = Role.LANDLORD,
-            IsEduVerified = false
+            IsEduVerified = false,
+            IsEmailVerified = true
         };
 
         var studentEdu = new User
@@ -108,7 +111,8 @@ public static class DbSeeder
             FullName = "Nguyễn Văn An (BKHN)",
             PhoneNumber = "0933112233",
             Role = Role.STUDENT,
-            IsEduVerified = true
+            IsEduVerified = true,
+            IsEmailVerified = true
         };
 
         var studentNormal = new User
@@ -118,7 +122,8 @@ public static class DbSeeder
             FullName = "Trần Thị Bích",
             PhoneNumber = "0944223344",
             Role = Role.STUDENT,
-            IsEduVerified = false
+            IsEduVerified = false,
+            IsEmailVerified = true
         };
 
         dbContext.Users.AddRange(admin, landlord1, landlord2, studentEdu, studentNormal);

@@ -42,4 +42,29 @@ public class UserManagementTests : ApiTestBase
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", new { email, password = oldPassword })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login", new { email, password = newPassword })).StatusCode);
     }
+
+    [Fact]
+    public async Task AdminCanManuallyToggleEmailAndEduVerification()
+    {
+        var userId = await Register("STUDENT", "manual-verify@example.com", verifyEmail: false);
+        await Admin();
+
+        var verified = await Data(await client.PatchAsJsonAsync($"/api/admin/users/{userId}/verification", new
+        {
+            isEmailVerified = true,
+            isEduVerified = true
+        }));
+
+        Assert.True(verified.GetProperty("isEmailVerified").GetBoolean());
+        Assert.True(verified.GetProperty("isEduVerified").GetBoolean());
+
+        var reverted = await Data(await client.PatchAsJsonAsync($"/api/admin/users/{userId}/verification", new
+        {
+            isEmailVerified = true,
+            isEduVerified = false
+        }));
+
+        Assert.True(reverted.GetProperty("isEmailVerified").GetBoolean());
+        Assert.False(reverted.GetProperty("isEduVerified").GetBoolean());
+    }
 }

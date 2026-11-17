@@ -39,6 +39,32 @@ public class User
     [Column("is_edu_verified")]
     public bool IsEduVerified { get; set; } = false;
 
+    [Column("is_email_verified")]
+    public bool IsEmailVerified { get; set; } = false;
+
+    [MaxLength(128)]
+    [Column("email_verification_code_hash")]
+    public string? EmailVerificationCodeHash { get; set; }
+
+    [Column("email_verification_expires_at")]
+    public DateTime? EmailVerificationExpiresAt { get; set; }
+
+    [Column("email_verification_sent_at")]
+    public DateTime? EmailVerificationSentAt { get; set; }
+
+    [Column("email_verification_attempts")]
+    public int EmailVerificationAttempts { get; set; } = 0;
+
+    public static bool IsEduDomain(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var at = email.Trim().LastIndexOf('@');
+        if (at < 0 || at == email.Trim().Length - 1) return false;
+        var domain = email.Trim()[(at + 1)..];
+        return domain.EndsWith(".edu", StringComparison.OrdinalIgnoreCase)
+            || domain.EndsWith(".edu.vn", StringComparison.OrdinalIgnoreCase);
+    }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

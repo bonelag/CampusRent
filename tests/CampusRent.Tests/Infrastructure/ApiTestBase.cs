@@ -34,7 +34,7 @@ public abstract class ApiTestBase : IDisposable
         return JsonDocument.Parse(text).RootElement.GetProperty("data").Clone();
     }
 
-    protected async Task<Guid> Register(string role = "STUDENT", string? email = null)
+    protected async Task<Guid> Register(string role = "STUDENT", string? email = null, bool verifyEmail = true)
     {
         var data = await Data(await client.PostAsJsonAsync("/api/auth/register", new { email = email ?? $"{Guid.NewGuid()}@example.com", password = "TestPass123!", fullName = "Test User", role = "STUDENT" }));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", data.GetProperty("token").GetString());
@@ -45,6 +45,7 @@ public abstract class ApiTestBase : IDisposable
             var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
             var account = (await db.Users.FindAsync(id))!;
             account.Role = Enum.Parse<Role>(role);
+            account.IsEmailVerified = verifyEmail;
             await db.SaveChangesAsync();
         }
 

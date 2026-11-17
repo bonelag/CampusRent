@@ -19,6 +19,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../lib/api';
 import { PageTitle, Modal } from '../components/Common';
 import { DownloadLink, ProtectedImage } from '../components/Attachments';
+import EmailVerificationCard from '../components/EmailVerificationCard';
 
 export default function AccountPage() {
   const { user, setUser, saved, notify, logout, refreshUser, changePassword } = useApp();
@@ -241,6 +242,11 @@ export default function AccountPage() {
                 ? 'Chủ trọ'
                 : 'Người tìm trọ'}
           </span>
+          <span
+            className={'verify-status-pill ' + (user.isEmailVerified ? 'confirmed' : 'pending')}
+          >
+            {user.isEmailVerified ? 'Email đã xác minh' : 'Email chưa xác minh'}
+          </span>
           <small>Tham gia từ {new Date(user.createdAt).toLocaleDateString('vi-VN')}</small>
           <button className="text-button" onClick={logout}>
             <LogOut size={15} /> Đăng xuất
@@ -266,6 +272,15 @@ export default function AccountPage() {
               </Link>
             )}
           </div>
+
+          <section className="panel">
+            <h2>Xác minh địa chỉ Email</h2>
+            <p className="muted">
+              Xác minh email giúp bảo vệ tài khoản, kích hoạt huy hiệu sinh viên (.edu) và mở khóa
+              tính năng đăng tin phòng trọ.
+            </p>
+            <EmailVerificationCard />
+          </section>
 
           <section className="panel">
             <h2>Thông tin cá nhân</h2>

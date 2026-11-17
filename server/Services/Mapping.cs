@@ -7,7 +7,7 @@ namespace CampusRent.Server.Services;
 public static class Mapping
 {
     public static Guid UserId(this ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!);
-    public static UserProfileDto Profile(User user) => new() { Id = user.Id, Email = user.Email, FullName = user.FullName, PhoneNumber = user.PhoneNumber, Avatar = user.Avatar, Role = user.Role, IsEduVerified = user.IsEduVerified, CreatedAt = user.CreatedAt };
+    public static UserProfileDto Profile(User user) => new() { Id = user.Id, Email = user.Email, FullName = user.FullName, PhoneNumber = user.PhoneNumber, Avatar = user.Avatar, Role = user.Role, IsEduVerified = user.IsEduVerified, IsEmailVerified = user.IsEmailVerified, CreatedAt = user.CreatedAt };
     public static LandlordRequestResponseDto LandlordRequest(LandlordRequest r) => new()
     {
         Id = r.Id,
@@ -32,6 +32,7 @@ public static class Mapping
         var svc = rankingService ?? DefaultRankingService;
         var reviews = (r.Reviews ?? Enumerable.Empty<Review>()).Where(x => !x.IsFlagged).ToList();
         var demotion = svc.EvaluateRoomDemotion(r, landlordReviews);
+        var stats = ReviewWeighting.Calculate(reviews);
         return new()
         {
             Id = r.Id,
@@ -49,12 +50,15 @@ public static class Mapping
             Amenities = r.Amenities,
             CoverImage = r.Images.OrderByDescending(i => i.IsCover).ThenBy(i => i.DisplayOrder).FirstOrDefault()?.Url,
             Status = r.Status,
+            ExpiresAt = r.ExpiresAt,
             CreatedAt = r.CreatedAt,
             DistanceKm = distance,
             AverageRating = svc.CalculateWeightedRating(reviews),
             ReviewCount = reviews.Count,
             IsDemoted = demotion.IsDemoted,
-            DemotionReason = demotion.Reason
+            DemotionReason = demotion.Reason,
+            RecommendationScore = stats.RecommendationScore,
+            IsLowRated = demotion.IsDemoted || stats.IsLowRated
         };
     }
 }

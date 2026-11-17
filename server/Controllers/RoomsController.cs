@@ -27,7 +27,7 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
         }
         if (lat.HasValue != lon.HasValue || (q.Radius.HasValue && !lat.HasValue))
             return BadRequest(ApiResponse<object>.Fail("Chọn trường hoặc tọa độ trung tâm để lọc bán kính."));
-        var rooms = await query.ToListAsync();
+        var rooms = await query.AsSingleQuery().ToListAsync();
         var landlordIds = rooms.Select(r => r.LandlordId).Distinct().ToList();
         var landlordReviews = await db.Reviews
             .Include(v => v.User)
@@ -49,7 +49,9 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
             "price_asc" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenBy(r => r.BasePrice),
             "price_desc" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenByDescending(r => r.BasePrice),
             "distance" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenBy(r => r.DistanceKm ?? double.MaxValue),
-            _ => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenByDescending(r => r.CreatedAt)
+            "newest" => items.OrderBy(r => r.IsDemoted ? 1 : 0).ThenByDescending(r => r.CreatedAt),
+            "rating_desc" => items.OrderBy(r => r.IsDemoted || r.IsLowRated ? 1 : 0).ThenByDescending(r => r.AverageRating).ThenByDescending(r => r.ReviewCount).ThenByDescending(r => r.CreatedAt),
+            _ => items.OrderBy(r => r.IsDemoted || r.IsLowRated ? 1 : 0).ThenByDescending(r => r.RecommendationScore).ThenByDescending(r => r.CreatedAt)
         };
         var list = items.ToList();
         return Ok(ApiResponse<object>.Ok(new { items = list.Skip((q.Page - 1) * q.PageSize).Take(q.PageSize), total = list.Count, q.Page, q.PageSize }));
@@ -59,7 +61,12 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
     {
         var r = await Loaded.Include(r => r.Landlord).Include(r => r.University).SingleOrDefaultAsync(r => r.Id == id);
         if (r == null || ((r.Status != RoomStatus.AVAILABLE || r.ExpiresAt <= DateTime.UtcNow) && !CanManage(r))) return NotFound(ApiResponse<object>.Fail("Tin không tồn tại hoặc đã ngừng hiển thị."));
-        var reviews = r.Reviews.Where(v => !v.IsFlagged).OrderByDescending(v => v.CreatedAt).ToList();
+        var ratingStats = ReviewWeighting.Calculate(r.Reviews);
+        var reviews = r.Reviews
+            .Where(v => !v.IsFlagged)
+            .OrderByDescending(v => rankingService.GetReviewWeight(v.User))
+            .ThenByDescending(v => v.CreatedAt)
+            .ToList();
 
         var landlordReviews = await db.Reviews
             .Include(v => v.User)
@@ -74,10 +81,10 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
             isDemoted = demotion.IsDemoted,
             demotionReason = demotion.Reason,
             images = r.Images.OrderBy(i => i.DisplayOrder).Select(i => i.Url),
-            landlord = new { r.Landlord.Id, r.Landlord.FullName, r.Landlord.PhoneNumber },
+            landlord = new { r.Landlord.Id, r.Landlord.FullName, r.Landlord.PhoneNumber, r.Landlord.IsEmailVerified },
             university = r.University == null ? null : new { r.University.Id, r.University.Name, r.University.ShortName, r.University.Latitude, r.University.Longitude },
             distanceToUniversityKm = r.University == null ? (double?)null : haversine.CalculateDistanceKm(r.Latitude, r.Longitude, r.University.Latitude, r.University.Longitude),
-            averageRating = weightedAvgRating, reviewCount = reviews.Count,
+            averageRating = weightedAvgRating, reviewCount = reviews.Count, recommendationScore = ratingStats.RecommendationScore, isLowRated = demotion.IsDemoted || ratingStats.IsLowRated,
             reviews = reviews.Select(v => new {
                 v.Id,
                 v.Rating,
@@ -86,7 +93,9 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
                 weight = rankingService.GetReviewWeight(v.User),
                 user = new {
                     v.User.FullName,
-                    isEduVerified = v.User.IsEduVerified || (!string.IsNullOrWhiteSpace(v.User.Email) && v.User.Email.EndsWith(".edu.vn", StringComparison.OrdinalIgnoreCase))
+                    isEduVerified = v.User.IsEduVerified || Models.User.IsEduDomain(v.User.Email),
+                    v.User.IsEmailVerified,
+                    isEduDomain = Models.User.IsEduDomain(v.User.Email)
                 }
             })
         }));
@@ -107,6 +116,10 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
     [HttpPost, Authorize(Roles = "LANDLORD,ADMIN")]
     public async Task<IActionResult> Create(CreateRoomDto dto)
     {
+        var account = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == User.UserId());
+        if (account == null) return Unauthorized();
+        if (!account.IsEmailVerified)
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail("Vui lòng xác minh mã email trước khi đăng bài."));
         var error = await Validate(dto); if (error != null) return BadRequest(ApiResponse<object>.Fail(error));
         var r = new Room { LandlordId = User.UserId() };
         Apply(r, dto); db.Rooms.Add(r); await db.SaveChangesAsync();
@@ -127,7 +140,8 @@ public class RoomsController(CampusRentDbContext db, IHaversineService haversine
         var r = await db.Rooms.FindAsync(id); if (r == null) return NotFound(); if (!CanManage(r)) return Forbid();
         if (!Enum.IsDefined(dto.Status)) return BadRequest();
         r.Status = dto.Status; r.UpdatedAt = DateTime.UtcNow;
-        if (dto.Renew) r.ExpiresAt = DateTime.UtcNow.AddDays(30);
+        if (dto.Status == RoomStatus.AVAILABLE && (dto.Renew || r.ExpiresAt <= DateTime.UtcNow))
+            r.ExpiresAt = DateTime.UtcNow.AddDays(30);
         await db.SaveChangesAsync(); return Ok(ApiResponse<object>.Ok(new { r.Id, r.Status, r.ExpiresAt }));
     }
     [HttpDelete("{id:guid}"), Authorize(Roles = "LANDLORD,ADMIN")]

@@ -150,6 +150,7 @@ public static class MarketSampleDataImporter
             user.Avatar = null;
             user.Role = landlord ? Role.LANDLORD : Role.STUDENT;
             user.IsEduVerified = !landlord && index % 2 == 0;
+            user.IsEmailVerified = true;
             user.UpdatedAt = now;
         }
     }

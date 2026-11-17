@@ -104,7 +104,10 @@ public class RoomListItemDto
     public int ReviewCount { get; set; }
     public bool IsDemoted { get; set; } = false;
     public string? DemotionReason { get; set; }
+    public double RecommendationScore { get; set; }
+    public bool IsLowRated { get; set; }
     public RoomStatus Status { get; set; }
+    public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

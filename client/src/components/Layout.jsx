@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Loading } from './Common';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -10,7 +10,9 @@ import {
   KeyRound,
   LogOut,
   Menu,
+  Moon,
   ShieldCheck,
+  Sun,
   UserRound,
   X,
 } from 'lucide-react';
@@ -33,8 +35,17 @@ export function Logo() {
 export default function Layout() {
   const { user, logout, saved } = useApp();
   const [open, setOpen] = useState(false);
+  const [dark, setDark] = useState(() => localStorage.getItem('campusrent-user-theme') === 'dark');
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    if (isAdminRoute) return;
+    const theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('campusrent-user-theme', theme);
+  }, [dark, isAdminRoute]);
   const authState = {
     from: location.pathname + location.search,
     backgroundLocation: location,
@@ -148,6 +159,15 @@ export default function Layout() {
               </>
             )}
             <button
+              type="button"
+              className="icon-button theme-toggle"
+              aria-label={dark ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối'}
+              title={dark ? 'Giao diện sáng' : 'Giao diện tối'}
+              onClick={() => setDark((prev) => !prev)}
+            >
+              {dark ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <button
               className="icon-button mobile-menu"
               aria-label={open ? 'Đóng menu' : 'Mở menu'}
               aria-expanded={open}
@@ -204,6 +224,15 @@ export default function Layout() {
           )}
         </nav>
       </header>
+      {user && !user.isEmailVerified && !['/account', '/post'].includes(location.pathname) && (
+        <div className="verify-email-banner" role="region" aria-label="Nhắc nhở xác minh email">
+          <span>
+            Email <strong>{user.email}</strong> chưa được xác minh. Xác minh ngay để mở khóa đăng
+            bài và tăng độ tin cậy tài khoản.
+          </span>
+          <Link to="/account">Xác minh email</Link>
+        </div>
+      )}
       <main id="main-content">
         <Suspense fallback={<Loading />}>
           <Outlet />

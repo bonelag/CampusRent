@@ -159,6 +159,7 @@ builder.Services.AddSingleton<ILivingCostService, LivingCostService>();
 builder.Services.AddSingleton<IProfanityFilterService, ProfanityFilterService>();
 builder.Services.AddSingleton<IReviewRankingService, ReviewRankingService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<UploadStorage>();
 builder.Services.AddScoped<IPlaceSearchService, PlaceSearchService>();
@@ -234,7 +235,57 @@ using (var scope = app.Services.CreateScope())
             CREATE INDEX IF NOT EXISTS ""IX_landlord_requests_status"" ON ""landlord_requests"" (""status"");
             CREATE INDEX IF NOT EXISTS ""IX_landlord_requests_user_id"" ON ""landlord_requests"" (""user_id"");
             CREATE UNIQUE INDEX IF NOT EXISTS ""IX_landlord_requests_pending_user"" ON ""landlord_requests"" (""user_id"") WHERE ""status"" = 'PENDING';
+            CREATE TABLE IF NOT EXISTS ""smtp_settings"" (
+                ""id"" INTEGER NOT NULL CONSTRAINT ""PK_smtp_settings"" PRIMARY KEY,
+                ""enabled"" INTEGER NOT NULL,
+                ""host"" TEXT NOT NULL,
+                ""port"" INTEGER NOT NULL,
+                ""use_ssl"" INTEGER NOT NULL,
+                ""username"" TEXT NOT NULL,
+                ""password"" TEXT NOT NULL,
+                ""from_email"" TEXT NOT NULL,
+                ""from_name"" TEXT NOT NULL,
+                ""updated_at"" TEXT NOT NULL
+            );
         ");
+        var existingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(\"users\");";
+            if (cmd.Connection!.State != System.Data.ConnectionState.Open) await cmd.Connection.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) existingCols.Add(reader.GetString(1));
+        }
+        var alterUsers = new (string Col, string Sql)[]
+        {
+            ("is_email_verified", "ALTER TABLE \"users\" ADD COLUMN \"is_email_verified\" INTEGER NOT NULL DEFAULT 0;"),
+            ("email_verification_code_hash", "ALTER TABLE \"users\" ADD COLUMN \"email_verification_code_hash\" TEXT NULL;"),
+            ("email_verification_expires_at", "ALTER TABLE \"users\" ADD COLUMN \"email_verification_expires_at\" TEXT NULL;"),
+            ("email_verification_sent_at", "ALTER TABLE \"users\" ADD COLUMN \"email_verification_sent_at\" TEXT NULL;"),
+            ("email_verification_attempts", "ALTER TABLE \"users\" ADD COLUMN \"email_verification_attempts\" INTEGER NOT NULL DEFAULT 0;")
+        };
+        foreach (var (col, sql) in alterUsers)
+            if (!existingCols.Contains(col)) await db.Database.ExecuteSqlRawAsync(sql);
+
+        var bookingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info(\"bookings\");";
+            if (cmd.Connection!.State != System.Data.ConnectionState.Open) await cmd.Connection.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) bookingCols.Add(reader.GetString(1));
+        }
+        var alterBookings = new (string Col, string Sql)[]
+        {
+            ("confirmed_at", "ALTER TABLE \"bookings\" ADD COLUMN \"confirmed_at\" TEXT NULL;"),
+            ("reminder_sent_at", "ALTER TABLE \"bookings\" ADD COLUMN \"reminder_sent_at\" TEXT NULL;"),
+            ("customer_not_closed_at", "ALTER TABLE \"bookings\" ADD COLUMN \"customer_not_closed_at\" TEXT NULL;"),
+            ("auto_closed_at", "ALTER TABLE \"bookings\" ADD COLUMN \"auto_closed_at\" TEXT NULL;")
+        };
+        foreach (var (col, sql) in alterBookings)
+            if (!bookingCols.Contains(col)) await db.Database.ExecuteSqlRawAsync(sql);
+
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_rooms_status_expires_at\" ON \"rooms\" (\"status\", \"expires_at\");");
     }
     if (migrateOnly)
     {
@@ -261,7 +312,7 @@ using (var scope = app.Services.CreateScope())
             throw new InvalidOperationException("The bootstrap email belongs to a non-administrator. Configure a different administrator email.");
         if (existingAdmin == null)
         {
-            db.Users.Add(new() { Email = adminEmail, FullName = "Quản trị viên", Role = CampusRent.Server.Models.Role.ADMIN, Password = BCrypt.Net.BCrypt.HashPassword(adminPassword) });
+            db.Users.Add(new() { Email = adminEmail, FullName = "Quản trị viên", Role = CampusRent.Server.Models.Role.ADMIN, Password = BCrypt.Net.BCrypt.HashPassword(adminPassword), IsEmailVerified = true });
             await db.SaveChangesAsync();
         }
     }

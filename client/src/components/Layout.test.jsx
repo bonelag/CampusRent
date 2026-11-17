@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import Layout from './Layout';
@@ -45,4 +45,23 @@ it('dành toàn bộ khung giao diện cho trang quản trị', () => {
   expect(screen.getByText('Bảng điều khiển riêng')).toBeVisible();
   expect(screen.queryByRole('banner')).not.toBeInTheDocument();
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+});
+
+it('cho phép bật tắt chế độ giao diện tối cho người dùng', () => {
+  localStorage.clear();
+  document.documentElement.dataset.theme = 'light';
+  render(
+    <MemoryRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<div>Trang chủ</div>} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Chuyển giao diện tối' }));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  expect(localStorage.getItem('campusrent-user-theme')).toBe('dark');
+  expect(screen.getByRole('button', { name: 'Chuyển giao diện sáng' })).toBeVisible();
 });

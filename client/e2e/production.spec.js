@@ -147,6 +147,12 @@ test('tệp xác minh riêng tư, admin duyệt và chủ trọ tải ảnh đă
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.locator('.profile-card .status-pill')).toHaveText('Chủ trọ');
   await page.goto('/post');
+  await expect(page.getByText('Xác minh email để mở khóa đăng bài')).toBeVisible();
+  await page.getByRole('button', { name: 'Gửi mã xác minh' }).click();
+  const previewCode = await page.locator('.verification-dev-pill strong').innerText();
+  await page.getByLabel('Mã xác minh email').fill(previewCode.trim());
+  await page.getByRole('button', { name: 'Xác nhận mã' }).click();
+  await expect(page.getByText('Xác minh email để mở khóa đăng bài')).toBeHidden();
   await page
     .locator('input[type=file]')
     .setInputFiles({ name: 'room.png', mimeType: 'image/png', buffer: png });

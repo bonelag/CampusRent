@@ -18,6 +18,7 @@ public class CampusRentDbContext : DbContext
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<LandlordRequest> LandlordRequests => Set<LandlordRequest>();
+    public DbSet<SmtpSetting> SmtpSettings => Set<SmtpSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,9 +28,15 @@ public class CampusRentDbContext : DbContext
             .HasFilter("\"Status\" IN ('PENDING', 'CONFIRMED')");
         modelBuilder.Entity<University>().HasIndex(u => u.ShortName).IsUnique();
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
             foreach (var property in entity.GetProperties().Where(p => p.ClrType == typeof(DateTime)))
                 property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
                     value => value.ToUniversalTime(), value => DateTime.SpecifyKind(value, DateTimeKind.Utc)));
+            foreach (var property in entity.GetProperties().Where(p => p.ClrType == typeof(DateTime?)))
+                property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+                    value => value.HasValue ? value.Value.ToUniversalTime() : null,
+                    value => value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null));
+        }
         modelBuilder.Entity<Room>().Property(r => r.Amenities).HasConversion(
             v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
             v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)!)
@@ -58,6 +65,7 @@ public class CampusRentDbContext : DbContext
 
             entity.Property(r => r.Status).HasConversion<string>();
             entity.HasIndex(r => r.Status);
+            entity.HasIndex(r => new { r.Status, r.ExpiresAt });
             entity.HasIndex(r => new { r.Latitude, r.Longitude });
         });
 

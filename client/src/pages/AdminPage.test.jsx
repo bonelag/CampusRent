@@ -106,6 +106,16 @@ const datasets = {
   '/admin/reports': [],
   '/admin/landlord-requests': [],
   '/admin/universities': [],
+  '/admin/smtp': {
+    enabled: false,
+    host: 'smtp.gmail.com',
+    port: 587,
+    useSsl: true,
+    username: '',
+    hasPassword: false,
+    fromEmail: '',
+    fromName: 'CampusRent',
+  },
 };
 
 beforeEach(() => {
@@ -148,6 +158,26 @@ it('hiển thị dashboard Adminator và chỉ cho admin đặt lại mật kh�
       body: { password: 'NewPassword123!' },
     })
   );
+
+  await userEvent.click(
+    screen.getByRole('checkbox', { name: 'Xác minh email thường cho Nguyễn Văn A' })
+  );
+  await waitFor(() =>
+    expect(api).toHaveBeenCalledWith('/admin/users/user-1/verification', {
+      method: 'PATCH',
+      body: { isEmailVerified: true, isEduVerified: false },
+    })
+  );
+
+  await userEvent.click(
+    screen.getByRole('checkbox', { name: 'Xác minh email .edu cho Nguyễn Văn A' })
+  );
+  await waitFor(() =>
+    expect(api).toHaveBeenCalledWith('/admin/users/user-1/verification', {
+      method: 'PATCH',
+      body: { isEmailVerified: true, isEduVerified: true },
+    })
+  );
 });
 
 it('lọc, sắp xếp và cung cấp đầy đủ thao tác quản lý phòng', async () => {
@@ -168,4 +198,38 @@ it('lọc, sắp xếp và cung cấp đầy đủ thao tác quản lý phòng',
 
   await userEvent.selectOptions(screen.getByLabelText('Sắp xếp phòng trọ'), 'Tin đăng');
   expect(screen.getByRole('button', { name: 'Đổi chiều sắp xếp' })).toBeEnabled();
+});
+
+it('cho phép cấu hình máy chủ Gmail SMTP trong Cài đặt', async () => {
+  render(
+    <MemoryRouter initialEntries={['/admin?view=settings']}>
+      <AdminPage />
+    </MemoryRouter>
+  );
+
+  expect(
+    await screen.findByRole('heading', { name: 'Cài đặt Gmail SMTP (Gửi mã xác minh)' })
+  ).toBeVisible();
+  await userEvent.click(
+    screen.getByRole('checkbox', { name: /Kích hoạt gửi email xác minh qua máy chủ SMTP/ })
+  );
+  await userEvent.type(
+    screen.getByLabelText('Tài khoản Gmail / SMTP Username'),
+    'campusrent.bot@gmail.com'
+  );
+  await userEvent.type(screen.getByLabelText(/Mật khẩu ứng dụng Gmail/), 'abcd efgh ijkl mnop');
+  await userEvent.click(screen.getByRole('button', { name: /Lưu cấu hình SMTP/ }));
+
+  await waitFor(() =>
+    expect(api).toHaveBeenCalledWith('/admin/smtp', {
+      method: 'PUT',
+      body: expect.objectContaining({
+        enabled: true,
+        host: 'smtp.gmail.com',
+        port: 587,
+        useSsl: true,
+        username: 'campusrent.bot@gmail.com',
+      }),
+    })
+  );
 });

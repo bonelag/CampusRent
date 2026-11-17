@@ -340,3 +340,116 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    ALTER TABLE users ADD email_verification_attempts integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    ALTER TABLE users ADD email_verification_code_hash character varying(128);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    ALTER TABLE users ADD email_verification_expires_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    ALTER TABLE users ADD email_verification_sent_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    ALTER TABLE users ADD is_email_verified boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    CREATE TABLE smtp_settings (
+        id integer NOT NULL,
+        enabled boolean NOT NULL,
+        host character varying(255) NOT NULL,
+        port integer NOT NULL,
+        use_ssl boolean NOT NULL,
+        username character varying(255) NOT NULL,
+        password character varying(512) NOT NULL,
+        from_email character varying(255) NOT NULL,
+        from_name character varying(150) NOT NULL,
+        updated_at timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_smtp_settings" PRIMARY KEY (id)
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    CREATE INDEX "IX_rooms_status_expires_at" ON rooms (status, expires_at);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117181424_AddEmailVerificationAndSmtpSettings') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261117181424_AddEmailVerificationAndSmtpSettings', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117184553_AddBookingLifecycleAndReminders') THEN
+    ALTER TABLE "Bookings" ADD "AutoClosedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117184553_AddBookingLifecycleAndReminders') THEN
+    ALTER TABLE "Bookings" ADD "ConfirmedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117184553_AddBookingLifecycleAndReminders') THEN
+    ALTER TABLE "Bookings" ADD "CustomerNotClosedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117184553_AddBookingLifecycleAndReminders') THEN
+    ALTER TABLE "Bookings" ADD "ReminderSentAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261117184553_AddBookingLifecycleAndReminders') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261117184553_AddBookingLifecycleAndReminders', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+

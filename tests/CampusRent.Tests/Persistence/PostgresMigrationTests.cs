@@ -54,7 +54,9 @@ public class PostgresMigrationTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
                 var ownerId = auth.GetProperty("user").GetProperty("id").GetGuid();
-                (await db.Users.FindAsync(ownerId))!.Role = CampusRent.Server.Models.Role.LANDLORD;
+                var owner = (await db.Users.FindAsync(ownerId))!;
+                owner.Role = CampusRent.Server.Models.Role.LANDLORD;
+                owner.IsEmailVerified = true;
                 db.LandlordRequests.Add(new() { UserId = ownerId, Title = "Verified landlord", Reason = "Persistence check", Status = CampusRent.Server.Models.LandlordRequestStatus.APPROVED });
                 await db.SaveChangesAsync();
                 Assert.Equal(1, await db.LandlordRequests.CountAsync());

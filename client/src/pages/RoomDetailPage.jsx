@@ -319,6 +319,17 @@ export default function RoomDetailPage() {
                 Viết đánh giá
               </button>
             </div>
+            <p className="review-weighting-note">
+              <ShieldCheck size={15} />
+              Điểm đánh giá áp dụng trọng số chống review ảo: bình luận từ email sinh viên (.edu /
+              .edu.vn) được ưu tiên trọng số cao hơn.
+            </p>
+            {room.isLowRated && (
+              <div className="review-low-warning" role="note">
+                Phòng này hiện có điểm đánh giá thấp (&lt; 3.0 ★) nên bị giảm ưu tiên đề xuất. Bạn
+                nên đọc kỹ nhận xét thực tế trước khi đặt lịch xem phòng.
+              </div>
+            )}
             {room.reviews.length === 0 ? (
               <p className="muted">Chưa có đánh giá. Hãy chia sẻ trải nghiệm đầu tiên của bạn.</p>
             ) : (
@@ -330,7 +341,7 @@ export default function RoomDetailPage() {
                       <strong>{review.user.fullName}</strong>
                       <small>
                         {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                        {review.user.isEduVerified ? (
+                        {review.user.isEduVerified || review.user.isEduDomain ? (
                           <span
                             className="student-weight-badge"
                             title="Đánh giá từ sinh viên xác thực (Trọng số 2.0x)"

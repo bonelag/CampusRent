@@ -219,6 +219,11 @@ export default function SearchPage() {
   }
   const page = Number(params.get('page') || 1);
   const pages = Math.ceil(result.total / 12);
+  const extraFilterCount = [
+    params.get('universityId'),
+    params.get('amenity'),
+    params.get('sort'),
+  ].filter(Boolean).length;
 
   return (
     <div className="container search-page prototype-search">
@@ -382,31 +387,38 @@ export default function SearchPage() {
           </label>
         </form>
         <div className="quick-locations">
-          <span>Địa điểm nhanh:</span>
-          <button className="gps-chip" onClick={locate} disabled={locating}>
-            <LocateFixed size={12} />
-            {locating ? 'Đang định vị…' : 'Định vị GPS của tôi'}
-          </button>
-          {universities.map((item) => (
-            <button
-              key={item.id}
-              className={university?.id === item.id ? 'selected' : ''}
-              onClick={() => selectUniversity(item.id)}
-            >
-              <MapPin size={11} />
-              {item.shortName}
+          <div className="quick-chips-strip" aria-label="Địa điểm gợi ý nhanh">
+            <span>Địa điểm nhanh:</span>
+            <button type="button" className="gps-chip" onClick={locate} disabled={locating}>
+              <LocateFixed size={12} />
+              {locating ? 'Đang định vị…' : 'Định vị GPS của tôi'}
             </button>
-          ))}
-          <button
-            className={'filter-options-toggle ' + (filtersOpen ? 'selected' : '')}
-            aria-label={filtersOpen ? 'Đóng bộ lọc' : 'Bộ lọc'}
-            onClick={() => setFiltersOpen(!filtersOpen)}
-          >
-            <SlidersHorizontal size={13} /> Lọc thêm
-          </button>
-          <span className="search-count">
-            Tìm thấy <strong>{loading ? '…' : result.total}</strong> phòng trọ
-          </span>
+            {universities.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={university?.id === item.id ? 'selected' : ''}
+                onClick={() => selectUniversity(item.id)}
+              >
+                <MapPin size={11} />
+                {item.shortName}
+              </button>
+            ))}
+          </div>
+          <div className="quick-locations-meta">
+            <button
+              type="button"
+              className={'filter-options-toggle ' + (filtersOpen ? 'selected' : '')}
+              aria-label={filtersOpen ? 'Đóng bộ lọc' : 'Bộ lọc'}
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal size={13} /> Lọc thêm
+              {extraFilterCount > 0 && <em className="filter-badge">{extraFilterCount}</em>}
+            </button>
+            <span className="search-count">
+              Tìm thấy <strong>{loading ? '…' : result.total}</strong> phòng trọ
+            </span>
+          </div>
         </div>
         {filtersOpen && (
           <div className="extra-filters">
@@ -446,7 +458,9 @@ export default function SearchPage() {
                 value={params.get('sort') || ''}
                 onChange={(event) => change('sort', event.target.value)}
               >
-                <option value="">Mới nhất</option>
+                <option value="">Đề xuất tốt nhất</option>
+                <option value="rating_desc">Đánh giá cao nhất</option>
+                <option value="newest">Mới nhất</option>
                 <option value="price_asc">Giá tăng dần</option>
                 <option value="price_desc">Giá giảm dần</option>
                 <option value="distance">Gần nhất</option>
