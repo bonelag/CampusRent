@@ -1,28 +1,28 @@
 # Kết quả kiểm thử
 
-Kiểm tra tại workspace ngày 10/11/2026 (Asia/Saigon), với .NET SDK 8.0.426, Node.js 22.23.4, Chrome và Docker/Compose trong Ubuntu 22.04 WSL.
+Kiểm tra cập nhật ngày 18/11/2026 (Asia/Saigon), với .NET SDK 8.0, Node.js 22, Chromium và Docker/Compose trên Ubuntu WSL / GitHub Actions.
 
 GitHub Actions dùng runner cố định `ubuntu-24.04`, tương thích Playwright 1.58.2. Không dùng `ubuntu-latest` vì nhãn này có thể chuyển sang Ubuntu 26.04, khiến bước cài Chromium/dependencies thất bại trước khi E2E chạy.
 
 | Nhóm | Kết quả |
 | --- | --- |
-| Backend xUnit + HTTP integration | 96 đạt, không bỏ qua |
+| Backend xUnit + HTTP integration | **124 đạt**, 0 thất bại, 0 bỏ qua (70 file C#) |
 | PostgreSQL migrations/persistence | Đạt với PostgreSQL 16 thật, schema riêng cho test |
-| Frontend Vitest / Testing Library | 22 đạt, gồm kiểm tra menu đăng tin của ADMIN |
-| Playwright desktop + mobile | 28 đạt |
-| Rà giao diện ở 320/360/390/768/1024/1440 px | 48 màn hình, không tràn ngang hoặc lỗi JavaScript sau khi tải font |
+| Frontend Vitest / Testing Library | **29 đạt** (8 files), gồm cài đặt Gmail SMTP, cổng OTP, Dark Mode & menu ADMIN |
+| Playwright desktop + mobile | **28 đạt** (gồm lăn chuột zoom bản đồ & chấm đỏ tâm vùng chọn) |
+| Rà giao diện ở 320/360/390/768/1024/1440 px | 48 màn hình (Light & Dark), không tràn ngang hoặc lỗi JavaScript |
 | Vite production build | Đạt |
 | .NET build / Docker Release publish | Đạt; build .NET không có warning |
-| EF migration/model consistency | Không có model chưa migrate; SQL export gồm ba migration |
-| Installer Linux | 7 kiểm tra đạt, gồm pipeline curl/sh/Bash và triển khai Docker thực |
+| EF migration/model consistency | Không có model chưa migrate (`has-pending-model-changes`) |
+| Installer Linux (`test_deploy.py --docker`) | **10 kiểm tra đạt**, gồm `curl|sh`, Caddy HTTPS, `CAMPUSRENT_PROXY=external` và triển khai Docker thực |
 | Cập nhật installer | Hai lần rollout liên tiếp giữ dữ liệu và JWT của phiên đã có |
 | Stack local / Caddy | Compose web/db, database health, SPA deep link và Caddy config validation đạt |
 | GitHub Actions | Actionlint và ShellCheck workflow đạt |
-| npm audit / NuGet advisory scan | Không phát hiện advisory tại thời điểm kiểm tra |
+| `npm audit --omit=dev` / NuGet scan | 0 lỗ hổng trên gói thực thi Production |
 
 ## Các phần đã được kiểm tra
 
-Bộ xUnit được chia theo trách nhiệm thành 63 file C#; file lớn nhất là 96 dòng. Fixture/helper nằm trong `Infrastructure/`, các ca kiểm thử nằm trong thư mục chức năng và class có tên trùng file. Xem [hướng dẫn tổ chức backend tests](../tests/CampusRent.Tests/README.md). Toàn bộ 96 ca, gồm dữ liệu Theory, đã chạy với SQLite/PostgreSQL.
+Bộ xUnit được chia theo trách nhiệm thành **70 file C#** trên 16 thư mục nghiệp vụ. Fixture/helper nằm trong `Infrastructure/`, các ca kiểm thử nằm trong thư mục chức năng và class có tên trùng file. Xem [hướng dẫn tổ chức backend tests](../tests/CampusRent.Tests/README.md). Toàn bộ 124 ca đã chạy xanh với SQLite và PostgreSQL 16.
 
 Backend bao phủ đăng ký người tìm trọ, chặn tự cấp chủ trọ/admin, đăng nhập/JWT, chuẩn hóa email, quyền sở hữu và vai trò hiện tại, tìm kiếm/bán kính/giá/tiện ích, dự toán chi phí, đăng/sửa/ẩn/gia hạn tin, thay ảnh, đánh giá duy nhất và kiểm duyệt, báo cáo, yêu thích, đặt/xác nhận/hủy/đặt lại lịch, UTC và hết hạn tin.
 

@@ -4,20 +4,21 @@ Mỗi file kiểm tra một chức năng hoặc một nhóm tình huống liên 
 
 | Thư mục | Trách nhiệm |
 | --- | --- |
-| `Authentication/` | Đăng ký, đăng nhập, JWT, thay đổi vai trò và mật khẩu |
+| `Authentication/` | Đăng ký, đăng nhập, JWT, xác minh OTP Email, thay đổi vai trò và mật khẩu |
 | `Accounts/` | Cập nhật hồ sơ |
-| `Rooms/` | Đăng/sửa tin, quyền sở hữu, hiển thị, tìm kiếm và validation |
-| `Bookings/` | Tạo, xác nhận, hủy và validation lịch hẹn |
+| `Rooms/` | Đăng/sửa tin (cổng xác minh Email), quyền sở hữu, hiển thị, hạ hạng uy tín, tìm kiếm và validation |
+| `Bookings/` | Tạo, xác nhận, hủy, đánh dấu khách chưa chốt và vòng đời lịch hẹn |
 | `Favorites/` | Lưu/bỏ lưu và phòng không tồn tại |
-| `Reviews/` | Tạo, validation và tính rating |
+| `Reviews/` | Tạo, validation, trọng số `2.0x` `.edu.vn` và xếp hạng Bayesian |
 | `Reports/` | Validation báo cáo |
-| `Administration/` | Kiểm duyệt, quyền quản trị và quản lý người dùng |
+| `Administration/` | Kiểm duyệt, thống kê KPI, cấu hình Gmail SMTP AES-GCM, xác thực thủ công và quản lý người dùng |
 | `LandlordRequests/` | Gửi, duyệt, hủy và bảo vệ yêu cầu chủ trọ |
+| `Universities/` | Truy xuất và quản lý danh mục trường đại học |
 | `Uploads/` | Ảnh phòng, ảnh/PDF xác minh và quyền truy cập tệp |
 | `Places/` | API gợi ý vị trí |
-| `Services/` | Khoảng cách, chi phí, từ cấm, clients vị trí và connection string |
-| `Persistence/` | Seed, ràng buộc dữ liệu và migrations PostgreSQL |
-| `Workers/` | Tự ẩn tin hết hạn |
+| `Services/` | Khoảng cách Haversine, chi phí, từ cấm, xếp hạng đánh giá, clients vị trí và connection string |
+| `Persistence/` | Seed, importer dữ liệu thị trường, ràng buộc dữ liệu và migrations PostgreSQL |
+| `Workers/` | Nhắc lịch ngày hẹn, tự ẩn phòng sau `+3 ngày` và tự hết hạn tin 30 ngày |
 | `Health/` | Health endpoint |
 | `Infrastructure/` | Fixture, HTTP/database setup và helpers dùng chung |
 
