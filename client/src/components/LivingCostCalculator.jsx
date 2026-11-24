@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 const LivingCostCalculator = ({ defaultRent = 2500000 }) => {
   const [roomRent, setRoomRent] = useState(defaultRent);
@@ -8,12 +8,13 @@ const LivingCostCalculator = ({ defaultRent = 2500000 }) => {
   const [waterRate, setWaterRate] = useState(20000);
   const [serviceFee, setServiceFee] = useState(150000);
 
-  const electricityCost = Number(electricityKwh || 0) * Number(electricityRate || 0);
+  const electricityCost =
+    Number(electricityKwh || 0) * Number(electricityRate || 0);
   const waterCost = Number(waterM3 || 0) * Number(waterRate || 0);
-  const totalCost =
-    Number(roomRent || 0) + electricityCost + waterCost + Number(serviceFee || 0);
+  const utilitiesCost = electricityCost + waterCost + Number(serviceFee || 0);
+  const totalCost = Number(roomRent || 0) + utilitiesCost;
 
-  const formatVND = (amount) => amount.toLocaleString('vi-VN') + ' đ';
+  const formatVND = (amount) => amount.toLocaleString("vi-VN") + " đ";
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white rounded-2xl shadow-md border border-gray-100 p-5 sm:p-6">
