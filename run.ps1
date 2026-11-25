@@ -1,6 +1,7 @@
 param(
     [switch]$UseProductionDatabase,
-    [switch]$SkipConfirmation
+    [switch]$SkipConfirmation,
+    [switch]$NoBrowser
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,13 +35,42 @@ function Stop-WorkspaceBackend {
         if (-not $process) { continue }
         $path = $process.Path
         $serverRoot = Join-Path $PSScriptRoot "server"
-        if (-not $path -or -not $path.StartsWith($serverRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        $isWorkspaceProc = $path -and $path.StartsWith($serverRoot, [StringComparison]::OrdinalIgnoreCase)
+        if (-not $isWorkspaceProc) {
+            $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $ownerId" -ErrorAction SilentlyContinue
+            if ($cim -and $cim.CommandLine -and ($cim.CommandLine -like "*CampusRent*" -or $cim.CommandLine -like "*$serverRoot*")) {
+                $isWorkspaceProc = $true
+            }
+        }
+        if (-not $isWorkspaceProc) {
             throw "Cong 5059 dang duoc tien trinh khac su dung (PID $ownerId)."
         }
         Write-Host "Dang dung backend CampusRent cu (PID $ownerId)..." -ForegroundColor Yellow
-        Stop-Process -Id $ownerId -Force
-        Start-Sleep -Milliseconds 500
+        Stop-Process -Id $ownerId -Force -ErrorAction SilentlyContinue
     }
+
+    for ($i = 0; $i -lt 20; $i++) {
+        $stillListening = Get-NetTCPConnection -LocalPort 5059 -State Listen -ErrorAction SilentlyContinue
+        if (-not $stillListening) { break }
+        Start-Sleep -Milliseconds 250
+    }
+}
+
+function Wait-HttpReady([string[]]$Urls, [string]$Label, [int]$TimeoutSeconds = 60) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        foreach ($url in $Urls) {
+            try {
+                $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+                if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 400) {
+                    Write-Host "  [OK] $Label da san sang ($url)" -ForegroundColor Green
+                    return $true
+                }
+            } catch {}
+        }
+        Start-Sleep -Milliseconds 400
+    }
+    throw "$Label khong phan hoi sau ${TimeoutSeconds}s tai $($Urls -join ' / '). Vui long kiem tra cua so log tuong ung."
 }
 
 function Set-FromDotEnv($Settings, [string]$SourceName, [string]$TargetName) {
@@ -50,6 +80,13 @@ function Set-FromDotEnv($Settings, [string]$SourceName, [string]$TargetName) {
     } else {
         [Environment]::SetEnvironmentVariable($TargetName, $value, "Process")
     }
+}
+
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    throw "Khong tim thay .NET SDK (dotnet). Vui long cai dat .NET 8 SDK."
+}
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    throw "Khong tim thay Node.js / npm. Vui long cai dat Node.js LTS."
 }
 
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -64,6 +101,7 @@ Write-Host ""
 if (-not (Test-Path "client\node_modules")) {
     Write-Host "[1/3] Dang cai dat thu vien frontend..." -ForegroundColor Yellow
     npm --prefix client install
+    if ($LASTEXITCODE -ne 0) { throw "Cai dat npm frontend that bai." }
 } else {
     Write-Host "[1/3] Thu vien frontend da san sang." -ForegroundColor Green
 }
@@ -127,6 +165,7 @@ if ($UseProductionDatabase) {
     Set-FromDotEnv $settings "CLOUDINARY_API_SECRET" "Cloudinary__ApiSecret"
     Set-FromDotEnv $settings "GOOGLE_PLACES_API_KEY" "GooglePlaces__ApiKey"
 } else {
+    Stop-WorkspaceBackend
     $env:ASPNETCORE_ENVIRONMENT = "Development"
     $env:Database__Provider = "Sqlite"
     Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
@@ -136,7 +175,7 @@ if ($UseProductionDatabase) {
 
 try {
     Write-Host "[2/3] Dang khoi dong Backend ASP.NET Core API (port 5059)..." -ForegroundColor Yellow
-    Start-Process cmd -ArgumentList "/k cd /d `"$PSScriptRoot`" && dotnet run --project server --urls http://localhost:5059" -WindowStyle Normal
+    Start-Process cmd -ArgumentList "/k cd /d `"$PSScriptRoot`" && dotnet run --project server --no-launch-profile --urls http://localhost:5059" -WindowStyle Normal
 } finally {
     foreach ($name in $environmentNames) {
         $previous = $savedEnvironment[$name]
@@ -157,9 +196,14 @@ if ($frontendRunning) {
 }
 
 Write-Host ""
-Write-Host "Dang mo trinh duyet web..." -ForegroundColor Cyan
-Start-Sleep -Seconds 3
-Start-Process "http://localhost:5173"
+Write-Host "Dang cho Backend va Frontend san sang..." -ForegroundColor Cyan
+Wait-HttpReady -Urls @("http://localhost:5059/health", "http://127.0.0.1:5059/health") -Label "Backend API" -TimeoutSeconds 60 | Out-Null
+Wait-HttpReady -Urls @("http://localhost:5173/", "http://127.0.0.1:5173/") -Label "Frontend React" -TimeoutSeconds 45 | Out-Null
+
+if (-not $NoBrowser) {
+    Write-Host "Dang mo trinh duyet web..." -ForegroundColor Cyan
+    Start-Process "http://localhost:5173"
+}
 
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Green
