@@ -43,14 +43,12 @@ public class CampusRentDbContext : DbContext
             .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<string>>(
                 (a, b) => a!.SequenceEqual(b!), v => v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())), v => v.ToList()));
 
-        // User indexes & constraints
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasIndex(u => u.Email).IsUnique();
             entity.Property(u => u.Role).HasConversion<string>();
         });
 
-        // Room relations
         modelBuilder.Entity<Room>(entity =>
         {
             entity.HasOne(r => r.Landlord)
@@ -69,7 +67,6 @@ public class CampusRentDbContext : DbContext
             entity.HasIndex(r => new { r.Latitude, r.Longitude });
         });
 
-        // Review relations & constraints
         modelBuilder.Entity<Review>(entity =>
         {
             entity.HasOne(rv => rv.Room)
@@ -85,7 +82,6 @@ public class CampusRentDbContext : DbContext
             entity.HasIndex(rv => new { rv.UserId, rv.RoomId }).IsUnique();
         });
 
-        // Report relations & constraints
         modelBuilder.Entity<Report>(entity =>
         {
             entity.HasOne(rp => rp.Reporter)
@@ -106,7 +102,6 @@ public class CampusRentDbContext : DbContext
             entity.Property(rp => rp.Status).HasConversion<string>();
         });
 
-        // LandlordRequest relations & constraints
         modelBuilder.Entity<LandlordRequest>(entity =>
         {
             entity.HasOne(lr => lr.User)

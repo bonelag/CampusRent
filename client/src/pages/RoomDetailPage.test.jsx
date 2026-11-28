@@ -89,24 +89,19 @@ describe('RoomDetailPage', () => {
       </MemoryRouter>
     );
 
-    // Kiểm tra render phòng
     await waitFor(() => {
       expect(screen.getByText('Phòng trọ giá rẻ cạnh ĐHBK')).toBeInTheDocument();
     });
 
-    // 1. Kiểm tra hiển thị banner giảm thứ hạng đề xuất
     expect(screen.getByText(/Lưu ý về thứ hạng đề xuất/i)).toBeInTheDocument();
     expect(screen.getByText(/phòng có điểm đánh giá trung bình thấp/i)).toBeInTheDocument();
 
-    // 2. Kiểm tra hiển thị dòng thông tin điểm số có trọng số
     expect(
       screen.getByText(/Điểm số có trọng số: Sinh viên xác thực 2.0x · Tài khoản thường 1.0x/i)
     ).toBeInTheDocument();
 
-    // 3. Kiểm tra hiển thị badge trọng số sinh viên xác thực 2x
     expect(screen.getByText(/Sinh viên xác thực · Trọng số 2x/i)).toBeInTheDocument();
 
-    // 4. Kiểm tra hiển thị badge trọng số tài khoản thường 1x
     expect(screen.getByText(/Tài khoản thường · Trọng số 1x/i)).toBeInTheDocument();
   });
 });

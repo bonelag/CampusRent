@@ -16,7 +16,7 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { api } from '../lib/api';
+import { api, getShortName } from '../lib/api';
 import { PageTitle, Modal } from '../components/Common';
 import { DownloadLink, ProtectedImage } from '../components/Attachments';
 import EmailVerificationCard from '../components/EmailVerificationCard';
@@ -30,13 +30,12 @@ export default function AccountPage() {
   const [passwordError, setPasswordError] = useState('');
   const closePassword = useCallback(() => setPasswordOpen(false), []);
 
-  // Landlord upgrade state
   const [requests, setRequests] = useState([]);
   const [loadingReqs, setLoadingReqs] = useState(false);
   const [reqTitle, setReqTitle] = useState('');
   const [reqReason, setReqReason] = useState('');
   const [imageUrls, setImageUrls] = useState([]);
-  const [pdfFile, setPdfFile] = useState(null); // { url, fileName, size }
+  const [pdfFile, setPdfFile] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [reqError, setReqError] = useState('');
@@ -227,7 +226,7 @@ export default function AccountPage() {
     <div className="container page-shell">
       <PageTitle
         eyebrow="GÓC NHỎ CỦA BẠN"
-        title={'Xin chào, ' + user.fullName.split(' ').at(-1) + '.'}
+        title={'Xin chào, ' + getShortName(user.fullName) + '.'}
         text="Quản lý thông tin và những kế hoạch cho nơi ở tiếp theo."
       />
       <div className="account-layout">
@@ -332,7 +331,6 @@ export default function AccountPage() {
             </button>
           </section>
 
-          {/* Section nâng cấp thành chủ trọ dành cho người tìm trọ (STUDENT) */}
           {user.role === 'STUDENT' && (
             <section className="panel upgrade-section">
               <div className="section-header-row">
@@ -361,7 +359,6 @@ export default function AccountPage() {
                   <h3 className="pending-title">{pendingRequest.title}</h3>
                   <p className="pending-reason">{pendingRequest.reason}</p>
 
-                  {/* Attached images preview */}
                   {pendingRequest.imageUrls?.length > 0 && (
                     <div className="attachment-group">
                       <strong>Ảnh đính kèm ({pendingRequest.imageUrls.length}):</strong>
@@ -380,7 +377,6 @@ export default function AccountPage() {
                     </div>
                   )}
 
-                  {/* Attached PDF document */}
                   {pendingRequest.pdfUrl && (
                     <div className="attachment-group">
                       <strong>Tài liệu đính kèm (PDF):</strong>
@@ -445,7 +441,6 @@ export default function AccountPage() {
                       />
                     </label>
 
-                    {/* Image attachments */}
                     <div className="upload-field-block">
                       <label className="upload-block-label">
                         Đính kèm ảnh minh họa (tùy chọn, tối đa 10 ảnh)
@@ -484,7 +479,6 @@ export default function AccountPage() {
                       </div>
                     </div>
 
-                    {/* PDF only attachment */}
                     <div className="upload-field-block">
                       <label className="upload-block-label">
                         Đính kèm giấy tờ / chứng từ xác minh (Chỉ file PDF)

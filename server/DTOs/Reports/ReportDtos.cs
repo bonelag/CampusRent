@@ -18,7 +18,7 @@ public class CreateReportDto
 public class ResolveReportDto
 {
     [Required]
-    public ReportStatus Status { get; set; } // RESOLVED or DISMISSED
+    public ReportStatus Status { get; set; }
 
     public bool DeleteTarget { get; set; } = false;
 }

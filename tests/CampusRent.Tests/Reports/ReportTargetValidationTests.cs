@@ -18,10 +18,8 @@ public class ReportTargetValidationTests : RoomFeatureTestBase
     {
         var roomId = await CreateRoom();
         await Register("STUDENT");
-        // Neither
         var neitherRes = await client.PostAsJsonAsync("/api/reports", new { reason = "Lý do chung chung" });
         Assert.Equal(HttpStatusCode.BadRequest, neitherRes.StatusCode);
-        // Both
         var bothRes = await client.PostAsJsonAsync("/api/reports", new { roomId, reviewId = Guid.NewGuid(), reason = "Báo cáo cả hai" });
         Assert.Equal(HttpStatusCode.BadRequest, bothRes.StatusCode);
     }

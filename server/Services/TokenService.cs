@@ -1,4 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using CampusRent.Server.Models;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CampusRent.Server.Services;
 
@@ -7,34 +12,35 @@ public interface ITokenService
     string GenerateToken(User user);
 }
 
-public class TokenService : ITokenService
+public class TokenService(IConfiguration config) : ITokenService
 {
-    private readonly IConfiguration _config;
-
-    public TokenService(IConfiguration config)
-    {
-        _config = config;
-    }
-
     public string GenerateToken(User user)
     {
-        var claims = new[] {
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.FullName),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role.ToString()),
-            new System.Security.Claims.Claim("credential_version", CredentialVersion(user.Password))
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.FullName),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("credential_version", CredentialVersion(user.Password))
         };
-        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"], audience: _config["Jwt:Audience"], claims: claims,
+
+        var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Secret"]!));
+        var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: config["Jwt:Issuer"],
+            audience: config["Jwt:Audience"],
+            claims: claims,
             expires: DateTime.UtcNow.AddHours(12),
-            signingCredentials: new Microsoft.IdentityModel.Tokens.SigningCredentials(
-                new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!)),
-                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256));
-        return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public static string CredentialVersion(string passwordHash) => Convert.ToHexString(
-        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(passwordHash)));
+    public static string CredentialVersion(string passwordHash)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(passwordHash));
+        return Convert.ToHexString(hashBytes);
+    }
 }
-

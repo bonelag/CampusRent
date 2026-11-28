@@ -117,3 +117,17 @@ export function mediaUrl(value) {
     ? new URL(value, new URL(BASE, window.location.origin).origin).href
     : value;
 }
+
+export function getShortName(fullName) {
+  const cleaned = String(fullName || '')
+    .replace(/[()]/g, ' ')
+    .trim();
+  if (!cleaned) return 'bạn';
+  const parts = cleaned.split(/\s+/);
+  return parts[parts.length - 1];
+}
+
+export function getInitials(fullName) {
+  const shortName = getShortName(fullName);
+  return shortName.slice(0, 2).toUpperCase();
+}

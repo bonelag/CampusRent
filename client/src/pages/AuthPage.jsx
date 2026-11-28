@@ -3,12 +3,12 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 export default function AuthPage({ register = false }) {
-  const { user, authenticate, notify } = useApp(),
-    navigate = useNavigate(),
-    location = useLocation();
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [showPassword, setShowPassword] = useState(false);
+  const { user, authenticate, notify } = useApp();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const destination = location.state?.from;
   const from =
     typeof destination === 'string' &&

@@ -333,7 +333,9 @@ public class AdminController(CampusRentDbContext db, IEmailService emailService)
     [HttpPatch("reports/{id:guid}")]
     public async Task<IActionResult> ResolveReport(Guid id, ResolveReportDto dto)
     {
-        if (dto.Status is not (ReportStatus.RESOLVED or ReportStatus.DISMISSED) || dto.DeleteTarget && dto.Status != ReportStatus.RESOLVED)
+        var isInvalidStatus = dto.Status is not (ReportStatus.RESOLVED or ReportStatus.DISMISSED);
+        var isInvalidDelete = dto.DeleteTarget && dto.Status != ReportStatus.RESOLVED;
+        if (isInvalidStatus || isInvalidDelete)
             return BadRequest(ApiResponse<object>.Fail("Trạng thái xử lý báo cáo không hợp lệ."));
         var report = await db.Reports.Include(item => item.Room).Include(item => item.Review).SingleOrDefaultAsync(item => item.Id == id);
         if (report == null) return NotFound(ApiResponse<object>.Fail("Không tìm thấy báo cáo."));

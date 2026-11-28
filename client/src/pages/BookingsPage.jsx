@@ -12,11 +12,11 @@ const statusLabel = {
 };
 export default function BookingsPage() {
   const { notify } = useApp();
-  const [items, setItems] = useState(null),
-    [error, setError] = useState(''),
-    [filter, setFilter] = useState('ALL'),
-    [busy, setBusy] = useState(''),
-    [cancel, setCancel] = useState(null);
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('ALL');
+  const [busy, setBusy] = useState('');
+  const [cancel, setCancel] = useState(null);
   const close = useCallback(() => setCancel(null), []);
   const load = useCallback(async () => {
     setError('');
@@ -158,7 +158,9 @@ export default function BookingsPage() {
                   )}
               </div>
               <div className="booking-item-actions">
-                {b.status !== 'CANCELLED' && new Date(b.visitAt) > new Date() && (
+                {b.status !== 'CANCELLED' &&
+                  b.status !== 'COMPLETED' &&
+                  new Date(b.visitAt) > new Date() && (
                   <>
                     {b.isLandlord && b.status === 'PENDING' && (
                       <button

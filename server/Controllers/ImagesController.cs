@@ -28,7 +28,6 @@ public class ImagesController(ICloudinaryService images, UploadStorage uploads, 
     {
         var url = "/uploads/images/" + fileName;
         if (!UploadStorage.IsPublicImageUrl(url)) return NotFound();
-        // Legacy verification images shared this folder. Keep those restricted to their owner/admin.
         if (!await db.RoomImages.AnyAsync(i => i.Url == url))
         {
             var references = db.LandlordRequests.FromSqlInterpolated($"SELECT * FROM landlord_requests WHERE image_urls LIKE {"%\"" + url + "\"%"}");

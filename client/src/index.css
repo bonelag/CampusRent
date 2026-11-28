@@ -2479,7 +2479,6 @@ textarea:focus {
   }
 }
 
-/* Search workspace and realtime location suggestions */
 .prototype-search {
   padding-top: 28px;
   padding-bottom: 42px;
@@ -3910,7 +3909,6 @@ textarea:focus {
   }
 }
 
-/* CampusRent redesign: ui.html visual system */
 html {
   background: var(--surface-soft);
 }
@@ -5310,7 +5308,6 @@ body {
   }
 }
 
-/* Landlord Upgrade Form & Sections */
 .upgrade-section {
   margin-top: 24px;
 }
@@ -5457,7 +5454,6 @@ body {
   color: var(--danger);
 }
 
-/* Pending & Status Cards */
 .upgrade-pending-card {
   padding: 20px;
   border-radius: 14px;
@@ -5560,7 +5556,6 @@ body {
   color: #b91c1c;
 }
 
-/* Admin Dashboard Landlord Requests */
 .landlord-requests-list {
   display: flex;
   flex-direction: column;
@@ -5677,7 +5672,6 @@ body {
   color: #9f1239;
 }
 
-/* Admin User Management */
 .admin-users-tab {
   display: flex;
   flex-direction: column;
@@ -5799,7 +5793,6 @@ body {
   cursor: pointer;
 }
 
-/* Landlord Location Picker Map */
 .location-picker-map-wrapper {
   display: flex;
   flex-direction: column;
@@ -5996,7 +5989,6 @@ body {
   margin-top: 6px;
 }
 
-/* Admin console — adapted from the MIT-licensed Adminator dashboard design system. */
 .admin-route-main {
   min-height: 100vh;
 }
@@ -7297,7 +7289,6 @@ body {
   }
 }
 
-/* Review Ranking & Demotion Styles */
 .demoted-badge {
   display: inline-flex;
   align-items: center;
@@ -7732,10 +7723,6 @@ body {
   }
 }
 
-/* =========================================================
-   USER UI POLISH & FULL DARK MODE
-   ========================================================= */
-
 .theme-toggle {
   width: 36px;
   height: 36px;
@@ -7940,7 +7927,6 @@ body {
   }
 }
 
-/* Dark Mode for User UI (:root[data-theme='dark']) */
 :root[data-theme='dark'] {
   color-scheme: dark;
   color: #f1f5f9;
@@ -8227,7 +8213,6 @@ body {
   color: var(--muted);
 }
 
-/* Comprehensive Detail, Form, Card Spacing, Radius & Dark Surface Polish */
 .page-title p {
   font-size: 13.5px;
   color: var(--muted);
@@ -8415,7 +8400,6 @@ body {
   }
 }
 
-/* Additional Dark Mode Surfaces & Typography Contrast */
 :root[data-theme='dark'] .description,
 :root[data-theme='dark'] .calculator > p,
 :root[data-theme='dark'] .cost-lines,

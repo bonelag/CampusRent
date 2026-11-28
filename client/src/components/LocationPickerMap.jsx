@@ -80,7 +80,6 @@ export default function LocationPickerMap({
   const markerRef = useRef(null);
   const searchBoxRef = useRef(null);
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
@@ -91,7 +90,6 @@ export default function LocationPickerMap({
     return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
-  // Search places debounce
   useEffect(() => {
     if (!dropdownOpen || !searchText.trim() || searchText.trim().length < 2) {
       setSuggestions([]);
@@ -215,7 +213,6 @@ export default function LocationPickerMap({
         </span>
       </div>
 
-      {/* Map Search & GPS bar */}
       <div className="picker-search-bar" ref={searchBoxRef}>
         <div className="picker-input-group">
           <Search size={16} className="search-icon" />
@@ -263,7 +260,6 @@ export default function LocationPickerMap({
           <span>{locating ? 'Đang định vị…' : 'Vị trí của tôi'}</span>
         </button>
 
-        {/* Suggestion Dropdown */}
         {dropdownOpen && (
           <div className="picker-suggestions-list" role="listbox">
             {suggestions.length > 0 ? (
@@ -290,7 +286,6 @@ export default function LocationPickerMap({
         )}
       </div>
 
-      {/* Map Container */}
       <div className="picker-map-container">
         <MapContainer
           center={currentPos}
@@ -315,7 +310,6 @@ export default function LocationPickerMap({
         </MapContainer>
       </div>
 
-      {/* Location Status & Reverse Geocoded Address Box */}
       <div className="picker-footer-info">
         <div className="coords-display">
           <span>

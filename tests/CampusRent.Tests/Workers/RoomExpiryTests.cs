@@ -105,7 +105,6 @@ public class RoomExpiryTests : ApiTestBase
             await db.SaveChangesAsync();
         }
 
-        // Manually re-enabling expired hidden room refreshes 30-day window even without renew=true
         var reactivated = await Data(await client.PatchAsJsonAsync($"/api/rooms/{roomId}/status", new { status = "AVAILABLE", renew = false }));
         Assert.Equal("AVAILABLE", reactivated.GetProperty("status").GetString());
         Assert.True(reactivated.GetProperty("expiresAt").GetDateTime() > DateTime.UtcNow.AddDays(28));

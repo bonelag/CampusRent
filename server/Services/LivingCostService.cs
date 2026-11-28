@@ -14,9 +14,6 @@ public interface ILivingCostService
 
 public class LivingCostService : ILivingCostService
 {
-    /// <summary>
-    /// Dự toán chi phí sinh hoạt hàng tháng
-    /// </summary>
     public decimal CalculateMonthlyCost(
         decimal basePrice,
         decimal electricPrice,
@@ -26,9 +23,14 @@ public class LivingCostService : ILivingCostService
         decimal expectedKwh = 80,
         decimal expectedM3 = 4)
     {
-        if (new[] { basePrice, electricPrice, waterPrice, internetPrice, otherFee, expectedKwh, expectedM3 }.Any(v => v < 0))
+        if (basePrice < 0 || electricPrice < 0 || waterPrice < 0 ||
+            internetPrice < 0 || otherFee < 0 || expectedKwh < 0 || expectedM3 < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(basePrice));
-        return basePrice + expectedKwh * electricPrice + expectedM3 * waterPrice + internetPrice + otherFee;
+        }
+
+        var electricTotal = expectedKwh * electricPrice;
+        var waterTotal = expectedM3 * waterPrice;
+        return basePrice + electricTotal + waterTotal + internetPrice + otherFee;
     }
 }
-

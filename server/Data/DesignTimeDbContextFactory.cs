@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 namespace CampusRent.Server.Data;
-// Migrations always target PostgreSQL. Development SQLite uses EnsureCreated.
+
 public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<CampusRentDbContext>
 {
     public CampusRentDbContext CreateDbContext(string[] args)

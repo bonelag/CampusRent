@@ -12,10 +12,8 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
     [Fact]
     public async Task WeightedReviewCalculation_AppliedCorrectlyInRoomDetail()
     {
-        // 1. Create a room as Landlord
         var roomId = await CreateRoom(title: "Phòng trọ Bách Khoa");
 
-        // 2. Regular user reviews with 2 stars (Weight = 1.0)
         await Register(role: "STUDENT", email: $"regular_{Guid.NewGuid()}@gmail.com");
         var res1 = await client.PostAsJsonAsync($"/api/rooms/{roomId}/reviews", new
         {
@@ -25,7 +23,6 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
         var data1 = await Data(res1);
         Assert.Equal(1.0, data1.GetProperty("weight").GetDouble());
 
-        // 3. Student user (.edu.vn) reviews with 5 stars (Weight = 2.0)
         await Register(role: "STUDENT", email: $"student_{Guid.NewGuid()}@hust.edu.vn");
         var res2 = await client.PostAsJsonAsync($"/api/rooms/{roomId}/reviews", new
         {
@@ -35,17 +32,13 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
         var data2 = await Data(res2);
         Assert.Equal(2.0, data2.GetProperty("weight").GetDouble());
 
-        // 4. Query room detail
         client.DefaultRequestHeaders.Authorization = null;
         var detailRes = await Data(await client.GetAsync($"/api/rooms/{roomId}"));
 
-        // Unweighted avg: (2 + 5) / 2 = 3.5
-        // Weighted avg: (2 * 1.0 + 5 * 2.0) / (1.0 + 2.0) = 12 / 3 = 4.0
         var avgRating = detailRes.GetProperty("averageRating").GetDouble();
         Assert.Equal(4.0, avgRating);
         Assert.Equal(2, detailRes.GetProperty("reviewCount").GetInt32());
 
-        // Check review items weight & verification flags
         var reviews = detailRes.GetProperty("reviews").EnumerateArray().ToList();
         Assert.Equal(2, reviews.Count);
 
@@ -61,10 +54,8 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
     [Fact]
     public async Task DemotionRanking_PushesDemotedRoomToEndOfSearchList()
     {
-        // 1. Create Good Room (high price: 5,000,000)
         var goodRoomId = await CreateRoom(basePrice: 5000000, title: "Phòng VIP tiện nghi cao cấp");
 
-        // Give Good Room a 5-star review
         await Register(role: "STUDENT", email: $"good_{Guid.NewGuid()}@hust.edu.vn");
         await client.PostAsJsonAsync($"/api/rooms/{goodRoomId}/reviews", new
         {
@@ -72,10 +63,8 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
             comment = "Phòng rất đẹp và sạch sẽ!"
         });
 
-        // 2. Create Bad Room (lower price: 2,000,000 - would normally come first in price_asc)
         var badRoomId = await CreateRoom(basePrice: 2000000, title: "Phòng ẩm thấp giá rẻ");
 
-        // Give Bad Room two 1-star reviews from 2 users
         await Register(role: "STUDENT", email: $"unhappy1_{Guid.NewGuid()}@gmail.com");
         await client.PostAsJsonAsync($"/api/rooms/{badRoomId}/reviews", new
         {
@@ -90,7 +79,6 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
             comment = "Thất vọng, không như mô tả."
         });
 
-        // 3. Search rooms with price_asc sort (where badRoom with 2,000,000 would naturally be first)
         client.DefaultRequestHeaders.Authorization = null;
         var searchRes = await Data(await client.GetAsync("/api/rooms?sort=price_asc"));
         var items = searchRes.GetProperty("items").EnumerateArray().ToList();
@@ -101,11 +89,9 @@ public class DemotionAndWeightedReviewApiTests : RoomFeatureTestBase
         Assert.True(badItemIndex >= 0, "Bad room should be in search results");
         Assert.True(goodItemIndex >= 0, "Good room should be in search results");
 
-        // The demoted bad room must appear AFTER the non-demoted good room despite being cheaper
         Assert.True(goodItemIndex < badItemIndex,
             $"Good room at index {goodItemIndex} should appear before demoted bad room at index {badItemIndex}");
 
-        // Bad room should have isDemoted = true and reason
         var badItem = items[badItemIndex];
         Assert.True(badItem.GetProperty("isDemoted").GetBoolean());
         Assert.False(string.IsNullOrWhiteSpace(badItem.GetProperty("demotionReason").GetString()));

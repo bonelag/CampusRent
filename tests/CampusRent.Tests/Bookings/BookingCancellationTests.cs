@@ -22,7 +22,6 @@ public class BookingCancellationTests : RoomFeatureTestBase
         var bookingId = booking.GetProperty("id").GetGuid();
         var cancelRes = await client.PatchAsJsonAsync($"/api/bookings/{bookingId}", new { status = "CANCELLED" });
         Assert.Equal(HttpStatusCode.OK, cancelRes.StatusCode);
-        // Cannot update cancelled booking
         var reUpdate = await client.PatchAsJsonAsync($"/api/bookings/{bookingId}", new { status = "CONFIRMED" });
         Assert.Equal(HttpStatusCode.BadRequest, reUpdate.StatusCode);
     }

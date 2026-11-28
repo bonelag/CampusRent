@@ -9,10 +9,9 @@ public static class DbSeeder
     {
         if (await dbContext.Universities.AnyAsync())
         {
-            return; // Đã có dữ liệu
+            return;
         }
 
-        // 1. Seed Universities
         var hust = new University
         {
             Name = "Đại học Bách Khoa Hà Nội",
@@ -68,7 +67,6 @@ public static class DbSeeder
         var uet = await dbContext.Universities.SingleAsync(u => u.ShortName == "UET");
         var hnue = await dbContext.Universities.SingleAsync(u => u.ShortName == "HNUE");
         var utc = await dbContext.Universities.SingleAsync(u => u.ShortName == "UTC");
-        // Development demo accounts only.
         var hash = BCrypt.Net.BCrypt.HashPassword("Password@123");
 
         var admin = new User
@@ -129,7 +127,6 @@ public static class DbSeeder
         dbContext.Users.AddRange(admin, landlord1, landlord2, studentEdu, studentNormal);
         await dbContext.SaveChangesAsync();
 
-        // 3. Seed Sample Rooms
         var sampleRooms = new List<Room>
         {
             new()
@@ -258,7 +255,6 @@ public static class DbSeeder
         dbContext.Rooms.AddRange(sampleRooms);
         await dbContext.SaveChangesAsync();
 
-        // 4. Seed Sample Reviews
         var room1 = sampleRooms[0];
         var review1 = new Review
         {

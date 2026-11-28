@@ -18,14 +18,11 @@ public class RoomStatusTests : RoomFeatureTestBase
     {
         var roomId = await CreateRoom();
         var landlordToken = client.DefaultRequestHeaders.Authorization;
-        // Change to RENTED
         var rentedRes = await Data(await client.PatchAsJsonAsync($"/api/rooms/{roomId}/status", new { status = "RENTED" }));
         Assert.Equal("RENTED", rentedRes.GetProperty("status").GetString());
-        // Disappears from public search
         client.DefaultRequestHeaders.Authorization = null;
         var search = await Data(await client.GetAsync("/api/rooms"));
         Assert.DoesNotContain(search.GetProperty("items").EnumerateArray(), r => r.GetProperty("id").GetGuid() == roomId);
-        // Landlord re-authenticates and renews
         client.DefaultRequestHeaders.Authorization = landlordToken;
         var renewedRes = await Data(await client.PatchAsJsonAsync($"/api/rooms/{roomId}/status", new { status = "AVAILABLE", renew = true }));
         Assert.Equal("AVAILABLE", renewedRes.GetProperty("status").GetString());

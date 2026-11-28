@@ -28,19 +28,19 @@ import { useApp } from '../context/AppContext';
 import { Loading, ErrorState, Modal } from '../components/Common';
 import RoomMap from '../components/RoomMap';
 export default function RoomDetailPage() {
-  const { id } = useParams(),
-    navigate = useNavigate(),
-    location = useLocation();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, saved, toggleSave, notify } = useApp();
-  const [room, setRoom] = useState(null),
-    [error, setError] = useState(''),
-    [reload, setReload] = useState(0),
-    [kwh, setKwh] = useState(80),
-    [water, setWater] = useState(4),
-    [modal, setModal] = useState(''),
-    [busy, setBusy] = useState(false),
-    [rating, setRating] = useState(5),
-    [photo, setPhoto] = useState(0);
+  const [room, setRoom] = useState(null);
+  const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
+  const [kwh, setKwh] = useState(80);
+  const [water, setWater] = useState(4);
+  const [modal, setModal] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [photo, setPhoto] = useState(0);
   const close = useCallback(() => setModal(''), []);
   useEffect(() => {
     setRoom(null);
@@ -90,9 +90,9 @@ export default function RoomDetailPage() {
       </div>
     );
   if (!room) return <Loading />;
-  const total = estimateCost(room, kwh, water),
-    isSaved = saved.some((r) => r.id === id),
-    images = (room.images.length ? room.images : [fallbackImage]).map(mediaUrl);
+  const total = estimateCost(room, kwh, water);
+  const isSaved = saved.some((r) => r.id === id);
+  const images = (room.images.length ? room.images : [fallbackImage]).map(mediaUrl);
   return (
     <div className="container detail-page">
       <div className="detail-top">
@@ -150,6 +150,7 @@ export default function RoomDetailPage() {
             src={images[0]}
             alt={room.title}
             onError={(e) => {
+              e.currentTarget.onerror = null;
               e.currentTarget.src = fallbackImage;
             }}
           />
@@ -163,6 +164,7 @@ export default function RoomDetailPage() {
               src={images[1] || images[0]}
               alt="Không gian bên trong phòng"
               onError={(e) => {
+                e.currentTarget.onerror = null;
                 e.currentTarget.src = fallbackImage;
               }}
             />
@@ -326,7 +328,7 @@ export default function RoomDetailPage() {
             </p>
             {room.isLowRated && (
               <div className="review-low-warning" role="note">
-                Phòng này hiện có điểm đánh giá thấp (&lt; 3.0 ★) nên bị giảm ưu tiên đề xuất. Bạn
+                Phòng này hiện có điểm đánh giá thấp (&lt; 2.5 ★) nên bị giảm ưu tiên đề xuất. Bạn
                 nên đọc kỹ nhận xét thực tế trước khi đặt lịch xem phòng.
               </div>
             )}
@@ -571,6 +573,12 @@ export default function RoomDetailPage() {
   );
 }
 function localDate(hours) {
-  const date = new Date(Date.now() + hours * 3600000);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const target = new Date(Date.now() + hours * 3600000);
+  const pad = (value) => String(value).padStart(2, '0');
+  const year = target.getFullYear();
+  const month = pad(target.getMonth() + 1);
+  const day = pad(target.getDate());
+  const hour = pad(target.getHours());
+  const minute = pad(target.getMinutes());
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }

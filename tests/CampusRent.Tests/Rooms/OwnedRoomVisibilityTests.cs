@@ -19,7 +19,6 @@ public class OwnedRoomVisibilityTests : RoomFeatureTestBase
         var roomId = await CreateRoom();
         var myRooms = await Data(await client.GetAsync("/api/rooms/mine"));
         Assert.Contains(myRooms.EnumerateArray(), r => r.GetProperty("id").GetGuid() == roomId);
-        // Another landlord has zero rooms
         await Register("LANDLORD", "landlord_two@example.com");
         var otherRooms = await Data(await client.GetAsync("/api/rooms/mine"));
         Assert.Empty(otherRooms.EnumerateArray());
@@ -30,12 +29,9 @@ public class OwnedRoomVisibilityTests : RoomFeatureTestBase
     {
         var roomId = await CreateRoom();
         var landlordToken = client.DefaultRequestHeaders.Authorization;
-        // Hide room
         await client.DeleteAsync($"/api/rooms/{roomId}");
-        // Public/Student gets 404
         client.DefaultRequestHeaders.Authorization = null;
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/rooms/{roomId}")).StatusCode);
-        // Owner gets 200 OK
         client.DefaultRequestHeaders.Authorization = landlordToken;
         var detailRes = await client.GetAsync($"/api/rooms/{roomId}");
         Assert.Equal(HttpStatusCode.OK, detailRes.StatusCode);

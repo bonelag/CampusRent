@@ -28,18 +28,14 @@ public class LandlordRequestDecisionTests : ApiTestBase
         var reqId = created.GetProperty("id").GetGuid();
         Assert.Equal("PENDING", created.GetProperty("status").GetString());
         Assert.Equal("Đăng ký làm chủ trọ khu vực Bách Khoa", created.GetProperty("title").GetString());
-        // Duplicate pending request is rejected
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/landlord-requests", reqPayload)).StatusCode);
-        // Student can view their requests
         var myRequests = await Data(await client.GetAsync("/api/landlord-requests/my"));
         Assert.Single(myRequests.EnumerateArray());
-        // Admin views and approves
         await Admin();
         var adminList = await Data(await client.GetAsync("/api/admin/landlord-requests"));
         Assert.Contains(adminList.EnumerateArray(), r => r.GetProperty("id").GetGuid() == reqId);
         var approveRes = await client.PatchAsync($"/api/admin/landlord-requests/{reqId}/approve", null);
         Assert.True(approveRes.IsSuccessStatusCode);
-        // Verify user role is now LANDLORD
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusRentDbContext>();
         var user = await db.Users.FindAsync(studentId);

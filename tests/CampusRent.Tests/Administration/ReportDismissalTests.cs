@@ -23,7 +23,6 @@ public class ReportDismissalTests : RoomFeatureTestBase
         await Admin();
         var resolveRes = await client.PatchAsJsonAsync($"/api/admin/reports/{reportId}", new { status = "DISMISSED", deleteTarget = false });
         Assert.Equal(HttpStatusCode.OK, resolveRes.StatusCode);
-        // Room is still available
         client.DefaultRequestHeaders.Authorization = null;
         var roomRes = await client.GetAsync($"/api/rooms/{roomId}");
         Assert.Equal(HttpStatusCode.OK, roomRes.StatusCode);

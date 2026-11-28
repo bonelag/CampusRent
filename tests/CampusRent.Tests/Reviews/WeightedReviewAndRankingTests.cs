@@ -28,7 +28,6 @@ public class WeightedReviewAndRankingTests : ApiTestBase
 
         var detail = await Data(await client.GetAsync($"/api/rooms/{roomId}"));
         var average = detail.GetProperty("averageRating").GetDouble();
-        // Weighted: (1*1.0 + 5*2.0) / 3.0 = 11.0 / 3.0 = 3.7
         Assert.InRange(average, 3.6, 3.8);
 
         var reviews = detail.GetProperty("reviews").EnumerateArray().ToList();

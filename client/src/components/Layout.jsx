@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { getInitials } from '../lib/api';
 
 export function Logo() {
   return (
@@ -64,7 +65,7 @@ export default function Layout() {
       : user?.role === 'LANDLORD'
         ? KeyRound
         : UserRound;
-  const initials = user?.fullName.trim().split(/\s+/).at(-1).slice(0, 2).toUpperCase();
+  const initials = user ? getInitials(user.fullName) : '';
 
   if (location.pathname.startsWith('/admin')) {
     return (

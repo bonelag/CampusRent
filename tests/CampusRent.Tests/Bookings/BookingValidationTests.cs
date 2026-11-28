@@ -26,13 +26,10 @@ public class BookingValidationTests : RoomFeatureTestBase
     {
         var roomId = await CreateRoom();
         await Register("STUDENT");
-        // Past or less than 1 hour in future
         var pastRes = await client.PostAsJsonAsync($"/api/rooms/{roomId}/bookings", new { visitAt = DateTimeOffset.UtcNow.AddMinutes(30) });
         Assert.Equal(HttpStatusCode.BadRequest, pastRes.StatusCode);
-        // More than 30 days in future
         var futureRes = await client.PostAsJsonAsync($"/api/rooms/{roomId}/bookings", new { visitAt = DateTimeOffset.UtcNow.AddDays(35) });
         Assert.Equal(HttpStatusCode.BadRequest, futureRes.StatusCode);
-        // Booking non-existent room
         var notFoundRes = await client.PostAsJsonAsync($"/api/rooms/{Guid.NewGuid()}/bookings", new { visitAt = DateTimeOffset.UtcNow.AddDays(2) });
         Assert.Equal(HttpStatusCode.NotFound, notFoundRes.StatusCode);
     }

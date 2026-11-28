@@ -9,7 +9,6 @@ public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpi
     {
         var now = DateTime.UtcNow;
 
-        // 1. Auto-hide listings after their 30-day active window
         var expiredRooms = await db.Rooms.Where(r => r.Status == RoomStatus.AVAILABLE && r.ExpiresAt <= now).ToListAsync(token);
         foreach (var room in expiredRooms)
         {
@@ -17,7 +16,6 @@ public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpi
             room.UpdatedAt = now;
         }
 
-        // 2. Send appointment-day reminder emails to landlords for confirmed bookings
         var vnTodayEndUtc = now.AddHours(7).Date.AddDays(1).AddHours(-7);
         var reminderCandidates = await db.Bookings
             .Include(b => b.Room).ThenInclude(r => r.Landlord)
@@ -42,7 +40,6 @@ public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpi
                 booking.ReminderSentAt = now;
         }
 
-        // 3. Auto-hide room 3 days after confirmed visit unless landlord marked "Khách chưa chốt"
         var unconfirmedPostVisitBookings = await db.Bookings
             .Include(b => b.Room)
             .Where(b => (b.Status == "CONFIRMED" || (b.ConfirmedAt != null && b.Status != "CANCELLED"))
@@ -64,7 +61,6 @@ public class AutoExpireRoomsWorker(IServiceScopeFactory scopes, ILogger<AutoExpi
             }
         }
 
-        // 4. Mark stale pending bookings or resolved post-visit bookings as COMPLETED
         var stalePending = await db.Bookings
             .Where(b => b.Status == "PENDING" && b.VisitAt <= now)
             .ToListAsync(token);

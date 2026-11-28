@@ -35,17 +35,17 @@ const defaults = {
   imageUrls: [],
 };
 export default function PostRoomPage() {
-  const { id } = useParams(),
-    navigate = useNavigate(),
-    { notify, user } = useApp();
-  const [form, setForm] = useState(defaults),
-    [universities, setUniversities] = useState([]),
-    [loading, setLoading] = useState(!!id),
-    [loadError, setLoadError] = useState(''),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false),
-    [uploading, setUploading] = useState(false),
-    [url, setUrl] = useState('');
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { notify, user } = useApp();
+  const [form, setForm] = useState(defaults);
+  const [universities, setUniversities] = useState([]);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [loadError, setLoadError] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [url, setUrl] = useState('');
   useEffect(() => {
     api('/universities')
       .then(setUniversities)

@@ -75,10 +75,6 @@ public class ReviewRankingServiceTests
     [Fact]
     public void CalculateWeightedRating_VerifiedStudentHasHigherWeight()
     {
-        // 1 review from verified student (5 stars, weight 2.0)
-        // 1 review from regular user (2 stars, weight 1.0)
-        // Weighted = (5 * 2.0 + 2 * 1.0) / (2.0 + 1.0) = 12 / 3 = 4.0
-        // (Unweighted would have been 3.5)
         var student = new User { Email = "sv@hust.edu.vn", IsEduVerified = true };
         var regular = new User { Email = "normal@gmail.com", IsEduVerified = false };
 
@@ -95,7 +91,6 @@ public class ReviewRankingServiceTests
     [Fact]
     public void CalculateWeightedRating_RoundsTo1DecimalPlace()
     {
-        // (4 * 2.0 + 3 * 1.0) / 3 = 11 / 3 = 3.6666... -> 3.7
         var student = new User { Email = "sv@neu.edu.vn" };
         var regular = new User { Email = "normal@gmail.com" };
 
@@ -132,8 +127,6 @@ public class ReviewRankingServiceTests
     [Fact]
     public void EvaluateRoomDemotion_RoomWithHighNegativeRatio_IsDemoted()
     {
-        // 2 reviews out of 3 are <= 2 stars (ratio = 66.7% >= 50%)
-        // Weighted average: (5*1 + 2*1 + 1*1)/3 = 2.66... >= 2.5
         var regular = new User { Email = "normal@gmail.com" };
         var room = new Room
         {
@@ -180,7 +173,7 @@ public class ReviewRankingServiceTests
         {
             Id = Guid.NewGuid(),
             LandlordId = landlordId,
-            Reviews = new List<Review>() // Room itself has no reviews yet
+            Reviews = new List<Review>()
         };
 
         var otherRoom = new Room { Id = Guid.NewGuid(), LandlordId = landlordId };

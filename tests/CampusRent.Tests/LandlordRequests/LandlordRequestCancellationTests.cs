@@ -44,10 +44,8 @@ public class LandlordRequestCancellationTests : RoomFeatureTestBase
         };
         var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", reqPayload));
         var reqId = created.GetProperty("id").GetGuid();
-        // Admin approves it
         await Admin();
         await client.PatchAsync($"/api/admin/landlord-requests/{reqId}/approve", null);
-        // Student tries to cancel after approval
         client.DefaultRequestHeaders.Authorization = studentToken;
         var cancelRes = await client.DeleteAsync($"/api/landlord-requests/{reqId}");
         Assert.Equal(HttpStatusCode.BadRequest, cancelRes.StatusCode);
@@ -59,7 +57,6 @@ public class LandlordRequestCancellationTests : RoomFeatureTestBase
         await Register("STUDENT", "student_a@example.com");
         var created = await Data(await client.PostAsJsonAsync("/api/landlord-requests", new { title = "Yêu cầu của A", reason = "Lý do của A", imageUrls = new string[0] }));
         var reqId = created.GetProperty("id").GetGuid();
-        // Switch to Student B
         await Register("STUDENT", "student_b@example.com");
         var cancelRes = await client.DeleteAsync($"/api/landlord-requests/{reqId}");
         Assert.Equal(HttpStatusCode.NotFound, cancelRes.StatusCode);
